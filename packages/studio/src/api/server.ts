@@ -1,3 +1,4 @@
+import { messageTemplate, formatRussian, translateRussian, renderLocalizedMessage, type MessageTemplate } from "@actalk/inkos-core/localization/ru";
 import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -177,14 +178,14 @@ import {
 
 // -- Studio server language (read per request from the project config's `language`) --
 
-type StudioLanguage = "zh" | "en";
+type StudioLanguage = "zh" | "en" | "ru";
 
 function normalizeStudioLanguage(value: unknown): StudioLanguage {
-  return value === "en" ? "en" : "zh";
+  return value === "ru" ? "ru" : value === "en" ? "en" : "zh";
 }
 
-function pick(lang: StudioLanguage, zh: string, en: string): string {
-  return lang === "en" ? en : zh;
+function pick(lang: StudioLanguage, zh: string, en: string | MessageTemplate): string {
+  return lang === "zh" ? zh : renderLocalizedMessage(en, lang);
 }
 
 async function resolveStudioProfileSkills(
@@ -262,8 +263,8 @@ function formatTaskElapsed(ms: number, lang: StudioLanguage): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  if (minutes === 0) return pick(lang, `${seconds} 秒`, `${seconds}s`);
-  return pick(lang, `${minutes} 分 ${seconds} 秒`, `${minutes}m ${seconds}s`);
+  if (minutes === 0) return pick(lang, `${seconds} 秒`, messageTemplate("{{0}}s", seconds));
+  return pick(lang, `${minutes} 分 ${seconds} 秒`, messageTemplate("{{0}}m {{1}}s", minutes, seconds));
 }
 
 /**
@@ -437,7 +438,7 @@ function nonTextModelMessage(modelId: string, lang: StudioLanguage = "zh"): stri
   return pick(
     lang,
     `模型 ${modelId} 不适合文本聊天/写作。请在模型选择器中改用文本模型，例如 gemini-2.5-flash、gemini-2.5-pro 或对应服务的 chat 模型。`,
-    `Model ${modelId} is not suitable for text chat/writing. Pick a text model in the model selector, e.g. gemini-2.5-flash, gemini-2.5-pro, or the service's chat model.`,
+    messageTemplate("Model {{0}} is not suitable for text chat/writing. Pick a text model in the model selector, e.g. gemini-2.5-flash, gemini-2.5-pro, or the service's chat model.", modelId),
   );
 }
 
@@ -986,7 +987,7 @@ function validateAgentActionExecution(args: {
     return pick(
       lang,
       `已确认动作 ${binding.actionId}，但模型没有执行对应 capability action。请重试或检查模型工具调用支持。`,
-      `Action ${binding.actionId} was confirmed, but the model did not execute the matching capability action. Retry or check model tool-call support.`,
+      messageTemplate("Action {{0}} was confirmed, but the model did not execute the matching capability action. Retry or check model tool-call support.", binding.actionId),
     );
   }
 
@@ -1007,7 +1008,7 @@ function formatAgentFailure(
   }
   return {
     code: "INKOS_ACTION_ERROR",
-    message: pick(lang, `InkOS 动作失败：${message}`, `InkOS action failed: ${message}`),
+    message: pick(lang, `InkOS 动作失败：${message}`, messageTemplate("InkOS action failed: {{0}}", message)),
     status: 500,
   };
 }
@@ -1136,6 +1137,9 @@ async function executeConfirmedProductionAction(args: {
   readonly binding: ConfirmedCapabilityBinding;
 }> {
   const lang = args.language ?? "zh";
+  // These creation engines still expose zh/en. Preserve their existing fallback;
+  // UI copy uses `lang`, while Russian long-form writing keeps its own language.
+  const legacyGenerationLanguage = lang === "ru" ? "zh" : lang;
   const id = args.taskId;
   const actionPayload = args.actionPayload;
   const configuredSkills = await loadAvailableAgentSkills({ projectRoot: args.root });
@@ -1198,7 +1202,7 @@ async function executeConfirmedProductionAction(args: {
     if (!direction) throw new ApiError(400, "CONFIRMED_ACTION_PAYLOAD_INCOMPLETE", pick(lang, "确认短篇缺少方向，请重新生成确认卡。", "The short fiction confirmation is missing a direction. Regenerate the confirmation card."));
     tool = createShortFictionRunTool(args.pipeline, args.root, {
       actionPayload,
-      language: lang,
+      language: legacyGenerationLanguage,
       defaultSkills: profileSkills("short-fiction"),
     });
     params = {
@@ -1243,7 +1247,7 @@ async function executeConfirmedProductionAction(args: {
     const title = requirePayloadText(payload?.title, pick(lang, "确认创建剧本缺少标题，请重新生成确认卡。", "The script creation confirmation is missing a title. Regenerate the confirmation card."));
     tool = createScriptCreationTool(args.pipeline, args.root, {
       actionPayload,
-      language: lang,
+      language: legacyGenerationLanguage,
       defaultSkills: profileSkills("script"),
     });
     params = {
@@ -1263,7 +1267,7 @@ async function executeConfirmedProductionAction(args: {
     const title = requirePayloadText(payload?.title, pick(lang, "确认创建分镜缺少标题，请重新生成确认卡。", "The storyboard creation confirmation is missing a title. Regenerate the confirmation card."));
     tool = createStoryboardCreationTool(args.pipeline, args.root, {
       actionPayload,
-      language: lang,
+      language: legacyGenerationLanguage,
       defaultSkills: profileSkills("storyboard"),
     });
     params = {
@@ -1284,7 +1288,7 @@ async function executeConfirmedProductionAction(args: {
     const title = requirePayloadText(payload?.title, pick(lang, "确认创建互动影游缺少标题，请重新生成确认卡。", "The interactive film confirmation is missing a title. Regenerate the confirmation card."));
     tool = createInteractiveFilmCreationTool(args.pipeline, args.root, {
       actionPayload,
-      language: lang,
+      language: legacyGenerationLanguage,
       defaultSkills: profileSkills("interactive-film"),
     });
     params = {
@@ -1431,7 +1435,7 @@ async function executeConfirmedProductionAction(args: {
       : undefined;
     tool = createPlayStartTool(args.pipeline, args.root, args.sessionId, args.playMode, {
       actionPayload: confirmedActionPayload,
-      language: lang,
+      language: legacyGenerationLanguage,
       defaultSkills: profileSkills("interactive-world"),
     });
     params = {
@@ -1451,7 +1455,7 @@ async function executeConfirmedProductionAction(args: {
     const deps = filmLLMDepsFromClient(agentCtx.client, agentCtx.model, {
       activatedSkills: () => profileSkills("interactive-film"),
     });
-    tool = createDraftStructureTool(args.root, projectId, deps, lang);
+    tool = createDraftStructureTool(args.root, projectId, deps, legacyGenerationLanguage);
     params = {
       instruction: payload?.instruction?.trim() || args.instruction,
     };
@@ -2134,7 +2138,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: str
       promise,
       new Promise<never>((_, reject) => {
         timeout = setTimeout(
-          () => reject(new Error(pick(lang, `${label} 超时（${timeoutMs}ms）`, `${label} timed out (${timeoutMs}ms)`))),
+          () => reject(new Error(pick(lang, `${label} 超时（${timeoutMs}ms）`, messageTemplate("{{0}} timed out ({{1}}ms)", label, timeoutMs)))),
           timeoutMs,
         );
       }),
@@ -2167,16 +2171,16 @@ function formatServiceProbeError(args: {
       ? "Responses"
       : "Chat / Completions";
   const streamSuffix = typeof args.stream === "boolean"
-    ? pick(lang, `，${args.stream ? "流式" : "非流式"}`, `, ${args.stream ? "streaming" : "non-streaming"}`)
+    ? pick(lang, `，${args.stream ? "流式" : "非流式"}`, messageTemplate(", {{0}}", args.stream ? "streaming" : "non-streaming"))
     : "";
   const context = [
-    pick(lang, `服务商：${args.label ?? args.service}`, `Service: ${args.label ?? args.service}`),
-    pick(lang, `测试模型：${args.model ?? "未确定"}`, `Test model: ${args.model ?? "undetermined"}`),
-    pick(lang, `协议：${protocol}${streamSuffix}`, `Protocol: ${protocol}${streamSuffix}`),
-    pick(lang, `Base URL：${args.baseUrl}`, `Base URL: ${args.baseUrl}`),
+    pick(lang, `服务商：${args.label ?? args.service}`, messageTemplate("Service: {{0}}", args.label ?? args.service)),
+    pick(lang, `测试模型：${args.model ?? "未确定"}`, messageTemplate("Test model: {{0}}", args.model ?? "undetermined")),
+    pick(lang, `协议：${protocol}${streamSuffix}`, messageTemplate("Protocol: {{0}}{{1}}", protocol, streamSuffix)),
+    pick(lang, `Base URL：${args.baseUrl}`, messageTemplate("Base URL: {{0}}", args.baseUrl)),
   ].join("\n");
   const upstreamPrefix = (detail: string): string =>
-    pick(lang, `\n上游返回：${detail}`, `\nUpstream response: ${detail}`);
+    pick(lang, `\n上游返回：${detail}`, messageTemplate("\nUpstream response: {{0}}", detail));
 
   if (args.service === "google") {
     return [
@@ -2210,7 +2214,7 @@ function formatServiceProbeError(args: {
 
   if (args.service === "moonshot" || args.service === "kimiCodingPlan" || args.service === "kimicode") {
     return [
-      pick(lang, `${args.label ?? args.service} 测试连接失败。`, `${args.label ?? args.service} connection test failed.`),
+      pick(lang, `${args.label ?? args.service} 测试连接失败。`, messageTemplate("{{0}} connection test failed.", args.label ?? args.service)),
       context,
       "",
       pick(
@@ -2223,7 +2227,7 @@ function formatServiceProbeError(args: {
   }
 
   return [
-    pick(lang, `${args.label ?? args.service} 测试连接失败。`, `${args.label ?? args.service} connection test failed.`),
+    pick(lang, `${args.label ?? args.service} 测试连接失败。`, messageTemplate("{{0}} connection test failed.", args.label ?? args.service)),
     context,
     "",
     pick(
@@ -2261,7 +2265,7 @@ async function fetchModelsFromServiceBaseUrl(
         error: pick(
           lang,
           `服务商返回 ${res.status}: ${body}`,
-          `Service returned ${res.status}: ${body}`,
+          messageTemplate("Service returned {{0}}: {{1}}", res.status, body),
         ),
         authFailed: res.status === 401 || res.status === 403,
       };
@@ -2627,16 +2631,18 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
   app.use("/*", cors({ origin: origin => origin || undefined }));
 
   // Structured error handler — ApiError returns typed JSON, others return 500
-  app.onError((error, c) => {
+  app.onError(async (error, c) => {
+    const language = normalizeStudioLanguage((await loadCurrentProjectConfig({ requireApiKey: false }).catch(() => cachedConfig)).language);
+    const message = (value: string) => language === "ru" ? translateRussian(value) : value;
     if (error instanceof ApiError) {
-      return c.json({ error: { code: error.code, message: error.message } }, error.status as 400);
+      return c.json({ error: { code: error.code, message: message(error.message) } }, error.status as 400);
     }
     if (error instanceof LLMConfigurationError) {
-      return c.json({ error: { code: "LLM_CONFIG_ERROR", message: error.message } }, 400);
+      return c.json({ error: { code: "LLM_CONFIG_ERROR", message: message(error.message) } }, 400);
     }
     console.error("[studio] Unexpected server error", { method: c.req.method, path: new URL(c.req.url).pathname, aborted: c.req.raw.signal.aborted }, error);
     return c.json(
-      { error: { code: "INTERNAL_ERROR", message: "Unexpected server error." } },
+      { error: { code: "INTERNAL_ERROR", message: message("Unexpected server error.") } },
       500,
     );
   });
@@ -3091,7 +3097,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         state.loadBookConfig(id),
         buildPipelineConfig({ bookIdForSettings: id }),
       ]);
-      const language = book.language === "en" ? "en" : "zh";
+      const language = book.language;
       const requestedBrief = typeof body.brief === "string" ? body.brief.trim() : "";
       const inspirationSkills = await hydrateActivatedSkillGuidance(
         await resolveStudioProfileSkills(root, "longform-novel", { includeRecommended: true }),
@@ -3103,20 +3109,20 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         appendActivatedSkillGuidance([
           {
             role: "system",
-            content: language === "en"
+            content: (language === "ru" ? translateRussian("Generate one optional Markdown inspiration card for revising the supplied chapter with the activated Skills. This is read-only advice: do not rewrite the chapter, alter canon, or claim persistence.") : (language === "en"
               ? "Generate one optional Markdown inspiration card for revising the supplied chapter with the activated Skills. This is read-only advice: do not rewrite the chapter, alter canon, or claim persistence."
-              : "按已激活的 Skills，为所给章节生成一张可选的 Markdown 修订灵感卡。这是只读建议：不要代写整章、改变正典或声称已经落盘。",
+              : "按已激活的 Skills，为所给章节生成一张可选的 Markdown 修订灵感卡。这是只读建议：不要代写整章、改变正典或声称已经落盘。")),
           },
           {
             role: "user",
             content: [
-              language === "en" ? `Book: ${book.title}` : `书名：${book.title}`,
-              language === "en" ? `Chapter: ${num}` : `章节：第${num}章`,
+              (language === "ru" ? formatRussian(messageTemplate("Book: {{0}}", book.title)) : (language === "en" ? `Book: ${book.title}` : `书名：${book.title}`)),
+              (language === "ru" ? formatRussian(messageTemplate("Chapter: {{0}}", num)) : (language === "en" ? `Chapter: ${num}` : `章节：第${num}章`)),
               requestedBrief || persistedBrief
-                ? `${language === "en" ? "Current user brief" : "当前用户提示"}:\n${requestedBrief || persistedBrief}`
+                ? `${(language === "ru" ? translateRussian("Current user brief") : (language === "en" ? "Current user brief" : "当前用户提示"))}:\n${requestedBrief || persistedBrief}`
                 : "",
-              plan ? `${language === "en" ? "Generated chapter plan" : "系统章节计划"}:\n${plan}` : "",
-              `${language === "en" ? "Current chapter" : "当前章节"}:\n${chapter}`,
+              plan ? `${(language === "ru" ? translateRussian("Generated chapter plan") : (language === "en" ? "Generated chapter plan" : "系统章节计划"))}:\n${plan}` : "",
+              `${(language === "ru" ? translateRussian("Current chapter") : (language === "en" ? "Current chapter" : "当前章节"))}:\n${chapter}`,
             ].filter(Boolean).join("\n\n"),
           },
         ], inspirationSkills),
@@ -3714,7 +3720,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
     if (!resolvedBaseUrl) {
       return c.json({
         ok: false,
-        error: pick(language, `未知服务商: ${service}`, `Unknown service: ${service}`),
+        error: pick(language, `未知服务商: ${service}`, messageTemplate("Unknown service: {{0}}", service)),
       }, 400);
     }
 
@@ -4844,11 +4850,11 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         } catch (e: unknown) {
           if (e instanceof ServiceApiKeyNotFoundError) {
             return c.json({
-              error: pick(language, `请先为 ${reqService} 配置 API Key`, `Configure an API Key for ${reqService} first`),
+              error: pick(language, `请先为 ${reqService} 配置 API Key`, messageTemplate("Configure an API Key for {{0}} first", reqService)),
               response: pick(
                 language,
                 `请先在模型配置中为 ${reqService} 填写 API Key，然后再试。`,
-                `Fill in an API Key for ${reqService} in the model settings, then try again.`,
+                messageTemplate("Fill in an API Key for {{0}} in the model settings, then try again.", reqService),
               ),
             }, 400);
           }
@@ -5162,7 +5168,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
           if (continuation.errorMessage) {
             exec.logs = [
               ...(exec.logs ?? []),
-              pick(surfaceLanguage, `后续对话不可用：${continuation.errorMessage}`, `Follow-up response unavailable: ${continuation.errorMessage}`),
+              pick(surfaceLanguage, `后续对话不可用：${continuation.errorMessage}`, messageTemplate("Follow-up response unavailable: {{0}}", continuation.errorMessage)),
             ].slice(-80);
             exec.details = {
               ...(exec.details && typeof exec.details === "object" ? exec.details as Record<string, unknown> : {}),
@@ -5529,7 +5535,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
   // --- Language setup ---
 
   app.post("/api/v1/project/language", async (c) => {
-    const { language } = await c.req.json<{ language: "zh" | "en" }>();
+    const { language } = await c.req.json<{ language: "zh" | "en" | "ru" }>();
     const configPath = join(root, "inkos.json");
     try {
       const raw = await readFile(configPath, "utf-8");
@@ -6713,6 +6719,7 @@ export async function startStudioServer(
   }
 
   const hostname = options?.hostname?.trim() || "127.0.0.1";
-  console.log(`InkOS Studio running on http://${hostname}:${port}`);
+  const startedMessage = `InkOS Studio running on http://${hostname}:${port}`;
+  console.log(config.language === "ru" ? formatRussian("InkOS Studio running on http://{{0}}:{{1}}", hostname, port) : startedMessage);
   serve({ fetch: app.fetch, port, hostname });
 }

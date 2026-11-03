@@ -1,35 +1,34 @@
-## Summary
-<!-- 1-3 bullet points: what changed and why -->
+## Суть изменения
+<!-- 1–3 пункта: какая проблема решена и как изменилось поведение -->
 
 -
 
-## Type of change
+## Тип изменения
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Refactor (no behavior change)
-- [ ] Docs / SKILL.md
-- [ ] Test
-- [ ] Performance
+- [ ] Исправление ошибки
+- [ ] Новая возможность
+- [ ] Рефакторинг без изменения поведения
+- [ ] Документация / SKILL.md
+- [ ] Тесты
+- [ ] Производительность
 
-## Motivation (optional)
-<!-- Why this change is needed. Link issues if applicable. Closes #xxx -->
+## Причина, если требуется
+<!-- Зачем нужно изменение. Укажите связанные обращения. Closes #xxx -->
 
-## Changes
-<!-- File-level change list: what each file does -->
+## Изменения по файлам
 
-| File | Change |
-|------|--------|
+| Файл | Изменение |
+|---|---|
 | | |
 
-## Usage (optional)
-<!-- Code snippets, CLI examples, or config samples showing how to use the new feature -->
+## Использование, если требуется
+<!-- Пример команды, кода или конфигурации -->
 
-## Test plan
+## Проверка
 
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm test` passes (all existing + new tests)
-- [ ] Manual verification: <!-- describe manual test steps -->
+- [ ] `pnpm typecheck` проходит
+- [ ] `pnpm test` проходит, включая существующие тесты
+- [ ] Выполнена ручная проверка: <!-- шаги и фактический результат -->
 
-## Breaking changes (optional)
-<!-- List any breaking changes to public API, CLI flags, config format, etc. -->
+## Нарушения совместимости, если есть
+<!-- Изменения публичного API, параметров CLI, формата конфигурации и способы перехода -->

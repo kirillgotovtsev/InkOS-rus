@@ -1,6 +1,8 @@
+import { messageTemplate, renderLocalizedMessage, type MessageTemplate } from "@actalk/inkos-core/localization/ru";
+import { resolveCliLanguage } from "../localization.js";
 import { Command } from "commander";
 import { StateManager, formatLengthCount, resolveLengthCountingMode } from "@actalk/inkos-core";
-import { findProjectRoot, log, logError } from "../utils.js";
+import { findProjectRoot, loadConfig, log, logError } from "../utils.js";
 
 export const statusCommand = new Command("status")
   .description("Show project status")
@@ -10,6 +12,8 @@ export const statusCommand = new Command("status")
   .action(async (bookIdArg: string | undefined, opts) => {
     try {
       const root = findProjectRoot();
+      const language = resolveCliLanguage((await loadConfig({ requireApiKey: false })).language);
+      const output = (message: string | MessageTemplate) => log(renderLocalizedMessage(message, !opts.json && language === "ru" ? "ru" : "en"));
       const state = new StateManager(root);
 
       const allBookIds = await state.listBooks();
@@ -24,9 +28,9 @@ export const statusCommand = new Command("status")
       const booksData = [];
 
       if (!opts.json) {
-        log(`InkOS Project: ${root}`);
-        log(`Books: ${allBookIds.length}`);
-        log("");
+        output(messageTemplate("InkOS Project: {{0}}", root));
+        output(messageTemplate("Books: {{0}}", allBookIds.length));
+        output("");
       }
 
       for (const id of bookIds) {
@@ -65,30 +69,30 @@ export const statusCommand = new Command("status")
         });
 
         if (!opts.json) {
-          log(`  ${book.title} (${id})`);
-          log(`    Status: ${book.status}`);
-          log(`    Platform: ${book.platform} | Genre: ${book.genre}`);
-          log(`    Chapters: ${index.length} / ${book.targetChapters}`);
-          if (persistedChapterCount !== index.length) log(`    Chapter files: ${persistedChapterCount}; the file count differs from the chapter index.`);
-          log(`    Words: ${totalWords.toLocaleString()} (avg ${avgWords}/ch)`);
-          log(`    Review observations: ${observationCount} across ${chaptersWithObservations} chapter(s)`);
+          output(messageTemplate("  {{0}} ({{1}})", book.title, id));
+          output(messageTemplate("    Status: {{0}}", book.status));
+          output(messageTemplate("    Platform: {{0}} | Genre: {{1}}", book.platform, book.genre));
+          output(messageTemplate("    Chapters: {{0}} / {{1}}", index.length, book.targetChapters));
+          if (persistedChapterCount !== index.length) output(messageTemplate("    Chapter files: {{0}}; the file count differs from the chapter index.", persistedChapterCount));
+          output(messageTemplate("    Words: {{0}} (avg {{1}}/ch)", totalWords.toLocaleString(), avgWords));
+          output(messageTemplate("    Review observations: {{0}} across {{1}} chapter(s)", observationCount, chaptersWithObservations));
 
           if (opts.chapters && index.length > 0) {
-            log("");
+            output("");
             for (const ch of index) {
               const icon = ch.observations.length > 0 ? "!" : "+";
-              log(`    [${icon}] Ch.${ch.number} "${ch.title}" | ${formatLengthCount(ch.wordCount, countingMode)} | ${ch.provenance}`);
+              output(messageTemplate("    [{{0}}] Ch.{{1}} \"{{2}}\" | {{3}} | {{4}}", icon, ch.number, ch.title, formatLengthCount(ch.wordCount, countingMode), ch.provenance));
               for (const observation of ch.observations) {
-                log(`        ${observation.code}: ${observation.summary}`);
+                output(messageTemplate("        {{0}}: {{1}}", observation.code, observation.summary));
               }
             }
           }
-          log("");
+          output("");
         }
       }
 
       if (opts.json) {
-        log(JSON.stringify({ project: root, books: booksData }, null, 2));
+        output(JSON.stringify({ project: root, books: booksData }, null, 2));
       }
     } catch (e) {
       if (opts.json) {

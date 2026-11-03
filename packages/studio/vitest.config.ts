@@ -13,6 +13,7 @@ export default defineConfig({
       "@actalk/inkos-core/interactive-film/graph-schema": resolve(__dirname, "../core/src/interactive-film/graph-schema.ts"),
       "@actalk/inkos-core/forecast/schema": resolve(__dirname, "../core/src/forecast/schema.ts"),
       "@actalk/inkos-core/llm/api-format": resolve(__dirname, "../core/src/llm/api-format.ts"),
+      "@actalk/inkos-core/localization/ru": resolve(__dirname, "../core/src/localization/ru.ts"),
       "@actalk/inkos-core": resolve(__dirname, "../core/src/index.ts"),
     },
   },

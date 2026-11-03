@@ -1,3 +1,5 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
+import { tr } from "../lib/app-language";
 import { useEffect, useMemo, useState } from "react";
 import type { Theme } from "../hooks/use-theme";
 import type { TFunction } from "../hooks/use-i18n";
@@ -140,8 +142,8 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
   const [file, setFile] = useState<File | null>(null);
   const [uploaded, setUploaded] = useState<TranslationUploadResponse | null>(null);
   const [title, setTitle] = useState("");
-  const [sourceLanguage, setSourceLanguage] = useState(isZh ? "自动识别" : "Auto detect");
-  const [targetLanguage, setTargetLanguage] = useState(isZh ? "中文（简体）" : "English");
+  const [sourceLanguage, setSourceLanguage] = useState(tr("自动识别", "Auto detect", isZh));
+  const [targetLanguage, setTargetLanguage] = useState(tr("中文（简体）", "English", isZh));
   const [segmentMaxChars, setSegmentMaxChars] = useState(1200);
   const [previewChapterNumber, setPreviewChapterNumber] = useState<number | null>(null);
 
@@ -185,7 +187,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
       });
       setUploaded(res);
       if (!title.trim()) setTitle(file.name.replace(/\.[^.]+$/u, ""));
-      setStatus({ tone: "success", message: isZh ? `已上传：${res.storedPath}` : `Uploaded: ${res.storedPath}` });
+      setStatus({ tone: "success", message: tr(`已上传：${res.storedPath}`, messageTemplate("Uploaded: {{0}}", res.storedPath), isZh) });
     } catch (err) {
       setStatus({ tone: "error", message: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -210,7 +212,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
         }),
       });
       setSelectedId(res.projectId);
-      setStatus({ tone: "success", message: isZh ? `已创建翻译项目：${res.title}` : `Created translation project: ${res.title}` });
+      setStatus({ tone: "success", message: tr(`已创建翻译项目：${res.title}`, messageTemplate("Created translation project: {{0}}", res.title), isZh) });
       await refetch();
     } catch (err) {
       setStatus({ tone: "error", message: err instanceof Error ? err.message : String(err) });
@@ -231,9 +233,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
       });
       setStatus({
         tone: "success",
-        message: isZh
-          ? `翻译 ${res.translatedSegments} 段，审校 ${res.reviewedChapters} 章。${res.skillIds?.length ? `Skill：${res.skillIds.join(" · ")}。` : ""}报告：${res.reportPath}`
-          : `Translated ${res.translatedSegments} segments, reviewed ${res.reviewedChapters} chapters. ${res.skillIds?.length ? `Skills: ${res.skillIds.join(" · ")}. ` : ""}Report: ${res.reportPath}`,
+        message: tr(`翻译 ${res.translatedSegments} 段，审校 ${res.reviewedChapters} 章。${res.skillIds?.length ? `Skill：${res.skillIds.join(" · ")}。` : ""}报告：${res.reportPath}`, messageTemplate("Translated {{0}} segments, reviewed {{1}} chapters. {{2}}Report: {{3}}", res.translatedSegments, res.reviewedChapters, res.skillIds?.length ? `Skills: ${res.skillIds.join(" · ")}. ` : "", res.reportPath), isZh),
       });
       await refetch();
       const updated = await fetchJson<TranslationDetailResponse>(`/translations/${encodeURIComponent(selected.projectId)}`);
@@ -256,7 +256,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ format }),
       });
-      setStatus({ tone: "success", message: isZh ? `已导出 ${format}: ${res.outputPath}` : `Exported ${format}: ${res.outputPath}` });
+      setStatus({ tone: "success", message: tr(`已导出 ${format}: ${res.outputPath}`, messageTemplate("Exported {{0}}: {{1}}", format, res.outputPath), isZh) });
     } catch (err) {
       setStatus({ tone: "error", message: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -342,7 +342,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
               {languagePresets.map((language) => <option key={`source-${language}`} value={language} />)}
             </datalist>
             <datalist id="translation-target-language-options">
-              {languagePresets.filter((language) => language !== (isZh ? "自动识别" : "Auto detect")).map((language) => (
+              {languagePresets.filter((language) => language !== (tr("自动识别", "Auto detect", isZh))).map((language) => (
                 <option key={`target-${language}`} value={language} />
               ))}
             </datalist>
@@ -428,7 +428,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
                       className={`rounded-lg px-3 py-2 text-left text-sm transition-colors ${previewChapter?.number === chapter.number ? "bg-primary/10 ring-1 ring-primary/50" : "bg-secondary/30 hover:bg-secondary/50"}`}
                     >
                       <div className="font-medium">{chapter.title}</div>
-                      <div className="text-xs text-muted-foreground">{chapter.translatedSegments} segments · {chapter.observations?.length ?? 0} observations</div>
+                      <div className="text-xs text-muted-foreground">{chapter.translatedSegments}{tr("segments ·", "segments ·")}{chapter.observations?.length ?? 0}{tr("observations", "observations")}</div>
                     </button>
                   ))}
                 </div>
@@ -440,7 +440,7 @@ export function TranslationManager({ nav, theme, t }: { nav: Nav; theme: Theme; 
                       <div className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{t("translation.preview")}</div>
                       <div className="font-semibold">{previewChapter.title}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{previewChapter.translatedSegments} segments · {previewChapter.observations?.length ?? 0} observations</div>
+                    <div className="text-xs text-muted-foreground">{previewChapter.translatedSegments}{tr("segments ·", "segments ·")}{previewChapter.observations?.length ?? 0}{tr("observations", "observations")}</div>
                   </div>
                   <div className="max-h-[560px] overflow-auto rounded-xl border border-border bg-background/50">
                     {previewChapter.segments.map((segment) => (

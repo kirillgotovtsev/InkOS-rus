@@ -1,6 +1,6 @@
 // Reader-facing labels and projections for canonical Work truth artifacts.
 
-import { getAppLanguage, tr } from "./app-language";
+import { tr } from "./app-language";
 
 // First non-empty prose paragraph of a body, for an at-a-glance overview. A
 // leading markdown heading on the paragraph is dropped so the glance is prose.
@@ -51,7 +51,7 @@ const FOUNDATION_FILE_LABELS_EN: Record<string, string> = {
 export function foundationFileLabel(name: string): string | undefined {
   const zh = FOUNDATION_FILE_LABELS[name];
   if (zh === undefined) return undefined;
-  return getAppLanguage() === "en" ? FOUNDATION_FILE_LABELS_EN[name] ?? zh : zh;
+  return tr(zh, FOUNDATION_FILE_LABELS_EN[name] ?? zh);
 }
 
 // --- current_state.md ---------------------------------------------------

@@ -29,7 +29,7 @@ Claude、GPT、Gemini、DeepSeek などを InkOS の執筆・レビュー・表�
 [モデルと料金 →](https://kkaiapi.com/models?utm_source=inkos&utm_medium=repo&utm_campaign=kk-models-readme&utm_content=ja-models) · [InkOS 接続ガイド →](https://kkaiapi.com/docs/inkos?utm_source=inkos&utm_medium=repo&utm_campaign=kk-models-readme&utm_content=ja-guide) · [MCP 接続 →](https://kkaiapi.com/api/information/skill?utm_source=inkos&utm_medium=repo&utm_campaign=kk-models-readme&utm_content=ja-mcp)
 
 <p align="center">
-  <a href="README.md">中文</a> | <a href="README.en.md">English</a> | 日本語
+  <a href="README.md">Русский</a> | <a href="README.zh-CN.md">中文</a> | <a href="README.en.md">English</a> | 日本語
 </p>
 
 ---

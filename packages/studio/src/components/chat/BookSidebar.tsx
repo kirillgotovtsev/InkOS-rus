@@ -1,3 +1,4 @@
+import { tr } from "../../lib/app-language";
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Theme } from "../../hooks/use-theme";
 import type { TFunction } from "../../hooks/use-i18n";
@@ -48,9 +49,7 @@ function renderTruthBody(
   if (file === "current_state.md") {
     const { isEmpty, body: stateBody } = presentCurrentState(content);
     return isEmpty ? (
-      <p className="text-[14px] leading-6 text-muted-foreground/60 italic">
-        还没有运行状态。开始写作后，每写完一章这里会自动记录最新的故事进展。
-      </p>
+      <p className="text-[14px] leading-6 text-muted-foreground/60 italic">{tr("还没有运行状态。开始写作后，每写完一章这里会自动记录最新的故事进展。", "No runtime state yet. Each completed chapter will record the latest story progress here.")}</p>
     ) : (
       <Streamdown plugins={streamdownPlugins} mode="static">{stateBody}</Streamdown>
     );
@@ -165,7 +164,7 @@ function ArtifactView({ bookId }: { readonly bookId: string }) {
             <Loader2 size={16} className="text-muted-foreground animate-spin" />
           </div>
         ) : content === null ? (
-          <p className="text-[14px] leading-6 text-muted-foreground/50 italic px-4 py-3">文件不存在</p>
+          <p className="text-[14px] leading-6 text-muted-foreground/50 italic px-4 py-3">{tr("文件不存在", "File not found")}</p>
         ) : editing ? (
           <textarea
             value={editContent}
@@ -204,9 +203,9 @@ function PanelView({ bookId, theme: _theme, t, sse }: BookSidebarProps) {
   }, [sse.messages]);
 
   const OP_LABELS: Record<string, string> = {
-    write: isZh ? "正在写作中..." : "Writing...",
-    audit: isZh ? "正在审计中..." : "Auditing...",
-    revise: isZh ? "正在修订中..." : "Revising...",
+    write: tr("正在写作中...", "Writing...", isZh),
+    audit: tr("正在审计中...", "Auditing...", isZh),
+    revise: tr("正在修订中...", "Revising...", isZh),
   };
 
   return (
@@ -300,7 +299,7 @@ export function BookSidebarToggle({ bookId, theme, t, sse }: BookSidebarProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-3 py-2 border-b border-border/20">
-              <span className="text-[15px] leading-6 font-medium text-muted-foreground">书籍信息</span>
+              <span className="text-[15px] leading-6 font-medium text-muted-foreground">{tr("书籍信息", "Book information")}</span>
               <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <PanelRightClose size={14} />
               </button>

@@ -21,6 +21,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
+    "./localization/ru": {
+      "types": "./dist/localization/ru.d.ts",
+      "import": "./dist/localization/ru.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
@@ -50,7 +54,7 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Narcooo/inkos.git",
+    "url": "https://github.com/kirillgotovtsev/InkOS-rus.git",
     "directory": "packages/core"
   },
   "scripts": {
@@ -82,5 +86,6 @@
   },
   "engines": {
     "node": ">=22.16.0"
-  }
+  },
+  "homepage": "https://github.com/kirillgotovtsev/InkOS-rus#readme"
 }

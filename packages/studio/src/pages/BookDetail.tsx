@@ -1,3 +1,4 @@
+import { tr } from "../lib/app-language";
 import { fetchJson, useApi, postApi } from "../hooks/use-api";
 import { useEffect, useMemo, useState } from "react";
 import type { Theme } from "../hooks/use-theme";
@@ -136,9 +137,7 @@ export function BookDetail({
 
   const handleRewrite = async (chapterNum: number) => {
     const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional rewrite brief for this run only. Leave blank to use existing focus."
-        : "可选：输入这次重写要遵循的补充想法。留空则沿用现有 focus。",
+      tr("可选：输入这次重写要遵循的补充想法。留空则沿用现有 focus。", "Optional rewrite brief for this run only. Leave blank to use existing focus.", !(data?.book.language === "en")),
       "",
     );
     if (brief === null) return;
@@ -159,9 +158,7 @@ export function BookDetail({
 
   const handleRevise = async (chapterNum: number, mode: ReviseMode) => {
     const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional revise brief for this run only. Leave blank to use existing focus."
-        : "可选：输入这次修订要遵循的补充想法。留空则沿用现有 focus。",
+      tr("可选：输入这次修订要遵循的补充想法。留空则沿用现有 focus。", "Optional revise brief for this run only. Leave blank to use existing focus.", !(data?.book.language === "en")),
       "",
     );
     if (brief === null) return;
@@ -182,9 +179,7 @@ export function BookDetail({
 
   const handleSync = async (chapterNum: number) => {
     const brief = window.prompt(
-      data?.book.language === "en"
-        ? "Optional sync brief for interpreting the edited chapter body. Leave blank to sync directly from the text."
-        : "可选：输入这次同步时要遵循的补充说明。留空则直接按正文同步。",
+      tr("可选：输入这次同步时要遵循的补充说明。留空则直接按正文同步。", "Optional sync brief for interpreting the edited chapter body. Leave blank to sync directly from the text.", !(data?.book.language === "en")),
       "",
     );
     if (brief === null) return;
@@ -238,9 +233,7 @@ export function BookDetail({
 
   const handleReviseFoundation = async () => {
     const feedback = window.prompt(
-      data?.book.language === "en"
-        ? "Foundation revision feedback. This rewrites the book foundation, not chapter body."
-        : "输入重修基础设定的反馈。此操作会重写基础设定，不直接改正文。",
+      tr("输入重修基础设定的反馈。此操作会重写基础设定，不直接改正文。", "Foundation revision feedback. This rewrites the book foundation, not chapter body.", !(data?.book.language === "en")),
       "",
     );
     if (!feedback?.trim()) return;
@@ -250,7 +243,7 @@ export function BookDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ feedback }),
       });
-      return data?.book.language === "en" ? "Foundation revised." : "基础设定已重修。";
+      return tr("基础设定已重修。", "Foundation revised.", !(data?.book.language === "en"));
     });
   };
 
@@ -261,7 +254,7 @@ export function BookDetail({
     </div>
   );
 
-  if (error) return <div className="text-destructive p-8 bg-destructive/5 rounded-xl border border-destructive/20">Error: {error}</div>;
+  if (error) return <div className="text-destructive p-8 bg-destructive/5 rounded-xl border border-destructive/20">{tr("Error:", "Error:")}{error}</div>;
   if (!data) return null;
 
   const { book, chapters } = data;
@@ -520,7 +513,7 @@ export function BookDetail({
                         onClick={() => handleSync(ch.number)}
                         disabled={syncingChapters.includes(ch.number) || ch.number !== latestPersistedChapter}
                         className="p-2 rounded-lg bg-secondary text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shadow-sm disabled:opacity-50"
-                        title={data?.book.language === "en" ? "Sync truth/state from edited chapter" : "根据已编辑章节同步 truth/state"}
+                        title={tr("根据已编辑章节同步 truth/state", "Sync truth/state from edited chapter", !(data?.book.language === "en"))}
                       >
                         {syncingChapters.includes(ch.number)
                           ? <div className="w-3.5 h-3.5 border-2 border-muted-foreground/20 border-t-muted-foreground rounded-full animate-spin" />
@@ -534,7 +527,7 @@ export function BookDetail({
                           if (mode) handleRevise(ch.number, mode);
                         }}
                         className="px-2 py-1.5 text-[11px] font-bold rounded-lg bg-secondary text-muted-foreground border border-border/50 outline-none hover:text-primary hover:bg-primary/10 transition-all disabled:opacity-50 cursor-pointer"
-                        title="Revise with AI"
+                        title={tr("Revise with AI", "Revise with AI")}
                       >
                         <option value="" disabled>{revisingChapters.includes(ch.number) ? t("common.loading") : t("book.curate")}</option>
                         <option value="spot-fix">{t("book.spotFix")}</option>

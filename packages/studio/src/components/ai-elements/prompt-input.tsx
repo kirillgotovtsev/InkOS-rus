@@ -1,5 +1,7 @@
 "use client";
 
+import { tr } from "../../lib/app-language";
+
 import {
   Command,
   CommandEmpty,
@@ -907,12 +909,12 @@ export const PromptInput = ({
     <>
       <input
         accept={accept}
-        aria-label="Upload files"
+        aria-label={tr("Upload files", "Upload files")}
         className="hidden"
         multiple={multiple}
         onChange={handleChange}
         ref={inputRef}
-        title="Upload files"
+        title={tr("Upload files", "Upload files")}
         type="file"
       />
       <form

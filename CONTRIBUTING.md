@@ -1,89 +1,102 @@
-# Contributing
+# Участие в разработке InkOS-rus
 
-## Setup
+Вопросы и предложения для русской версии направляйте в [репозиторий InkOS-rus](https://github.com/kirillgotovtsev/InkOS-rus). Исходный проект: [Narcooo/inkos](https://github.com/Narcooo/inkos).
+
+## Подготовка
+
+Нужны Node.js 22.16.0 или новее и pnpm 9 или новее.
 
 ```bash
-git clone https://github.com/Narcooo/inkos.git
-cd inkos
-pnpm install
+git clone https://github.com/kirillgotovtsev/InkOS-rus.git
+cd InkOS-rus
+pnpm install --frozen-lockfile
 pnpm build
 pnpm test
 ```
 
-Node ≥ 20, pnpm ≥ 9.
+## Структура проекта
 
-## Project Structure
-
-```
+```text
 packages/
-  core/    # Agents, pipeline, state management, LLM providers
-  cli/     # Commander.js commands (22 commands)
+  core/    # Агенты, исполнительный контур, состояние, поиск, поставщики моделей
+  cli/     # Команды CLI и полноэкранный TUI
+  studio/  # Веб-интерфейс и локальный API
 ```
 
-Monorepo managed with pnpm workspaces. `cli` depends on `core` via `workspace:*`.
+Монорепозиторий управляется pnpm workspaces. Внутренние зависимости используют `workspace:*`; перед упаковкой они заменяются согласованными версиями.
 
-## Development
+Русские строки общего каталога находятся в `packages/core/src/localization/ru.ts`. Интерфейс Studio использует также `packages/studio/src/hooks/use-i18n.ts` и `packages/studio/src/lib/app-language.ts`.
+
+## Разработка и проверки
 
 ```bash
-pnpm dev          # Watch mode (both packages)
-pnpm build        # Build once
-pnpm test         # Run all tests
-pnpm typecheck    # Type-check without emitting
+pnpm dev
+pnpm build
+pnpm test
+pnpm typecheck
 ```
 
-## Commit Convention
+`pnpm dev` запускает режим разработки пакетов, `pnpm build` создаёт рабочую сборку. Для обычного запуска собранного Studio используйте `npm start`.
 
-```
+Проверяйте затронутое поведение. Для перевода интерфейса нужны осмотр в браузере и проверка длины подписей. Для изменения протоколов нужны тесты их контрактов. В тестах обращения к моделям подменяются; реальные платные API не вызываются.
+
+## Коммиты и pull request
+
+Формат заголовка коммита:
+
+```text
 <type>: <description>
 ```
 
-Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
+Типы: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`.
 
-Keep commits atomic — one logical change per commit. Split new files, interface changes, tests, and docs into separate commits when they're non-trivial.
+Один коммит должен описывать одно логическое изменение. Разделяйте несвязанные изменения поведения, рефакторинг и форматирование.
 
-## Pull Request Checklist
+Перед отправкой:
 
-- [ ] `pnpm build` passes
-- [ ] `pnpm test` passes (all existing + new tests)
-- [ ] `pnpm typecheck` passes
-- [ ] New features have tests
-- [ ] No unrelated formatting changes (keep diffs focused)
-- [ ] Commit messages follow the convention above
+- Сборка `pnpm build` проходит.
+- Проверка типов `pnpm typecheck` проходит.
+- Затронутые и существующие тесты проходят; для нового поведения добавлены необходимые проверки.
+- Изменение сохраняет обратную совместимость либо явно описывает её нарушение.
+- В коммит не попали ключи, рукописи, сеансы и другие рабочие данные.
+- Обновлена документация, если изменились команды, настройки или поведение.
 
-## Code Style
+## Стиль кода
 
-- TypeScript, strict mode
-- 2-space indentation
-- Immutable patterns: `{ ...obj, key: value }` over mutation
-- Functions < 50 lines, files < 800 lines
-- Errors must surface, not be swallowed (`catch { }` without re-throw needs a comment)
-- Publishable package manifests must use registry-installable internal versions, not `workspace:*`; `pnpm` links local packages through the workspace config during development.
+- TypeScript со строгой проверкой, отступ в два пробела.
+- Предпочитайте неизменяемые обновления данных.
+- Ориентиры исходного проекта: функции короче 50 строк, файлы короче 800 строк.
+- Ошибки должны быть видимы. Пустой `catch` допустим только с объяснением, почему ошибку можно безопасно проигнорировать.
+- Публикуемые манифесты не должны содержать `workspace:*`. Для этого предусмотрены скрипты подготовки и проверки пакетов.
 
-## Adding a CLI Command
+## Добавление команды CLI
 
-1. Create `packages/cli/src/commands/<name>.ts`
-2. Export a `Command` instance
-3. Register it in `packages/cli/src/index.ts`
-4. Add `--json` output support
-5. Support book-id auto-detection when only one book exists
+1. Создайте `packages/cli/src/commands/<name>.ts`.
+2. Экспортируйте объект `Command`.
+3. Зарегистрируйте его в актуальном модуле программы CLI. В версии 2.0 точка запуска `index.ts` вызывает `program.ts`; проверьте существующий шаблон команды.
+4. Поддержите `--json`, если команда возвращает структурируемые результаты.
+5. Для команд книги поддержите автоматическое определение `[id]`, если книга в проекте одна.
 
-## Adding a Genre
+## Добавление жанра
 
-1. Create `packages/core/genres/<id>.md` with YAML frontmatter
-2. Define: `chapterTypes`, `fatigueWords`, `numericalSystem`, `powerScaling`, `pacingRule`, `satisfactionTypes`, `auditDimensions`, `language`
-3. Add genre body (prohibitions, language rules, narrative guidance)
+В версии 2.0 жанр и платформа задаются непустыми строками `--genre` и `--platform`; старый каталог `packages/core/genres/` и команда `inkos genre` в этой версии отсутствуют. Профессиональную методику задают навыки и ограничения произведения. Для нового жанра сначала уточните описание, авторские требования и способ проверки результата. Изменение навыков модели рассматривается отдельно от перевода документации.
 
-## Testing
+## Навыки модели и документация
 
-Tests live next to source in `__tests__/` directories. We use Vitest.
+`packages/core/skills/` и `skills/SKILL.md` содержат инструкции, которые читает модель. Их изменение влияет на выполнение задач. В этом русском выпуске они сохранены в исходном виде. Перевод документации для людей сам по себе не является разрешением менять эти инструкции или их идентификаторы.
+
+Оригинальные README и журналы изменений сохранены отдельно. Главные русские документы: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `docs/README.md`, технические документы в `docs/` и `spec/`.
+
+## Запуск отдельных тестов
 
 ```bash
-pnpm --filter @actalk/inkos-core test    # Core tests only
-pnpm --filter @actalk/inkos test         # CLI tests only
+pnpm --filter @actalk/inkos-core test
+pnpm --filter @actalk/inkos test
+pnpm --filter @actalk/inkos-studio test
 ```
 
-For features touching the LLM pipeline, mock the LLM calls — don't make real API requests in tests.
+Тесты находятся в каталогах `__tests__/`. Используется Vitest. Внешние модели, сеть и файловые ошибки подменяются там, где это требуется для воспроизводимой проверки.
 
-## Questions?
+## Лицензия
 
-Open an issue or check existing ones: https://github.com/Narcooo/inkos/issues
+Изменения форка распространяются в составе проекта по AGPL-3.0-only. Сохраняйте исходные уведомления об авторстве и лицензиях. Юридический текст находится в [LICENSE](LICENSE), сведения о происхождении в [NOTICE.md](NOTICE.md).

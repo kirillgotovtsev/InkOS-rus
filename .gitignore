@@ -25,7 +25,7 @@ autoresearch/
 .superpowers/
 _*.md
 
-# 用户运行时数据（会话记录、书籍内容、项目密钥、提示词模板不属于项目代码）
+# Рабочие данные: сеансы, рукописи, ключи и пользовательские шаблоны
 .inkos/
 books/
 works/
@@ -35,3 +35,8 @@ storyboards/
 translations/
 inkos.json
 CLAUDE.md
+
+# Русская документация и сохранённый исходный документ
+!docs/README.md
+!docs/LICENSE.ru.md
+!docs/harness-result-first-redesign.zh-CN.md

@@ -1,3 +1,5 @@
+import { translateRussian } from "@actalk/inkos-core/localization/ru";
+import { tr } from "../lib/app-language";
 import { useEffect, useState } from "react";
 import { BookPlus, CheckCircle2 } from "lucide-react";
 import { fetchJson, useApi } from "../hooks/use-api";
@@ -66,7 +68,24 @@ const PLATFORMS_EN: ReadonlyArray<PlatformOption> = [
   { value: "other", label: "Other" },
 ];
 
-const PAGE_COPY: Record<"zh" | "en", PlatformCopy> = {
+const PAGE_COPY: Record<"zh" | "en" | "ru", PlatformCopy> = {
+  ru: {
+    heading: "Создать роман",
+    hint: "Эта форма сразу запускает создание книги. Чтобы сначала обсудить замысел, откройте чат Studio.",
+    titleLabel: "Название",
+    titlePlaceholder: "Например: Реестр ночного порта",
+    genreLabel: "Жанр",
+    genrePlaceholder: "Например: детектив, фэнтези, фантастика",
+    platformLabel: "Целевая площадка",
+    targetChaptersLabel: "Плановое число глав",
+    chapterWordCountLabel: "Слов в главе",
+    briefLabel: "Краткое содержание / основной замысел",
+    briefPlaceholder: "Опишите мир, главного героя, его цель, основной конфликт и начало истории.",
+    createBook: "Создать книгу",
+    creatingBook: "Создание…",
+    creationStatus: "Книга создаётся. Рабочая область откроется после подготовки файлов.",
+    creationSteps: ["Сохранение настроек книги", "Создание основы", "Регистрация материалов"],
+  },
   zh: {
     heading: "创建长篇 Work",
     hint: "这里提交的是明确建书动作。想先讨论和完善方向，请回到 Studio Chat 自然交流，确认卡会携带同一份结构化建书参数。",
@@ -111,11 +130,13 @@ export function defaultChapterWordsForLanguage(language: BookCreatePayload["lang
   return language === "zh" ? "3000" : "2000";
 }
 
-export function platformOptionsForLanguage(language: "zh" | "en"): ReadonlyArray<PlatformOption> {
-  return language === "en" ? PLATFORMS_EN : PLATFORMS_ZH;
+export function platformOptionsForLanguage(language: "zh" | "en" | "ru"): ReadonlyArray<PlatformOption> {
+  return language === "ru"
+    ? PLATFORMS_EN.map(option => option.value === "other" ? { ...option, label: "Другая" } : option)
+    : language === "en" ? PLATFORMS_EN : PLATFORMS_ZH;
 }
 
-export function defaultBookCreateForm(language: "zh" | "en"): BookCreateFormState {
+export function defaultBookCreateForm(language: "zh" | "en" | "ru"): BookCreateFormState {
   return {
     title: "",
     genre: "",
@@ -146,7 +167,7 @@ export function buildBookCreatePayload(form: BookCreateFormState, language: Book
   const targetChapters = parsePositiveInteger(form.targetChapters);
   const chapterWordCount = parsePositiveInteger(form.chapterWordCount);
   if (!targetChapters || !chapterWordCount || !isBookCreateFormReady(form)) {
-    throw new Error(language === "zh" ? "请先补齐建书表单。" : "Complete the book creation form first.");
+    throw new Error(language === "ru" ? translateRussian("Complete the book creation form first.") : language === "zh" ? "请先补齐建书表单。" : "Complete the book creation form first.");
   }
   return {
     title: form.title.trim(),
@@ -201,7 +222,7 @@ export async function waitForBookReady(bookId: string, options: WaitForBookReady
 export function BookCreate({ nav, theme, t: _t }: { nav: Nav; theme: Theme; t: TFunction }) {
   const c = useColors(theme);
   const { data: project } = useApi<{ language: string }>("/project");
-  const projectLang = project?.language === "en" || project?.language === "ru" ? "en" : "zh";
+  const projectLang = project?.language === "ru" ? "ru" : project?.language === "en" ? "en" : "zh";
   const copy = PAGE_COPY[projectLang];
   const platformChoices = platformOptionsForLanguage(projectLang);
   const [form, setForm] = useState<Omit<BookCreateFormState, "chapterWordCount"> & { chapterWordCount?: string }>(
@@ -234,7 +255,7 @@ export function BookCreate({ nav, theme, t: _t }: { nav: Nav; theme: Theme; t: T
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildBookCreatePayload(submittedForm, writingLanguage)),
       });
-      if (!data.bookId) throw new Error(projectLang === "zh" ? "创建动作没有返回 Work ID。" : "Creation did not return a Work ID.");
+      if (!data.bookId) throw new Error(tr("创建动作没有返回 Work ID。", "Creation did not return a Work ID."));
       await waitForBookReady(data.bookId);
       nav.toBook(data.bookId);
     } catch (cause) {
@@ -255,14 +276,14 @@ export function BookCreate({ nav, theme, t: _t }: { nav: Nav; theme: Theme; t: T
         <section className="space-y-5 rounded-xl border border-border/60 bg-card/80 p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground">{projectLang === "zh" ? "写作语言" : "Writing language"}</span>
+              <span className="text-xs font-medium text-muted-foreground">{tr("写作语言", "Writing language")}</span>
               <select
                 value={writingLanguage}
                 onChange={(event) => setSelectedLanguage(event.target.value as BookCreatePayload["language"])}
                 className={`w-full ${c.input} rounded-md px-3 py-2.5 text-sm focus:outline-none`}
               >
-                <option value="zh">中文</option>
-                <option value="en">English</option>
+                <option value="zh">{tr("中文", "Chinese")}</option>
+                <option value="en">{tr("英语", "English")}</option>
                 <option value="ru">Русский</option>
               </select>
             </label>

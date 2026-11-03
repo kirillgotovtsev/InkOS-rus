@@ -1,10 +1,10 @@
 import { useState } from "react";
 
-export function LanguageSelector({ onSelect }: { onSelect: (lang: "zh" | "en") => void }) {
-  const [hovering, setHovering] = useState<"zh" | "en" | null>(null);
-  const [selected, setSelected] = useState<"zh" | "en" | null>(null);
+export function LanguageSelector({ onSelect }: { onSelect: (lang: "zh" | "en" | "ru") => void }) {
+  const [hovering, setHovering] = useState<"zh" | "en" | "ru" | null>(null);
+  const [selected, setSelected] = useState<"zh" | "en" | "ru" | null>(null);
 
-  const handleSelect = (lang: "zh" | "en") => {
+  const handleSelect = (lang: "zh" | "en" | "ru") => {
     setSelected(lang);
     // Brief pause for the selection animation before transitioning
     setTimeout(() => onSelect(lang), 400);
@@ -22,7 +22,7 @@ export function LanguageSelector({ onSelect }: { onSelect: (lang: "zh" | "en") =
       </div>
 
       {/* Language cards — generous, distinct, immersive */}
-      <div className="flex gap-8 mb-16">
+      <div className="flex flex-wrap justify-center gap-8 mb-16">
         <button
           onClick={() => handleSelect("zh")}
           onMouseEnter={() => setHovering("zh")}
@@ -64,10 +64,30 @@ export function LanguageSelector({ onSelect }: { onSelect: (lang: "zh" | "en") =
             Royal Road · Kindle Unlimited · Scribble Hub
           </div>
         </button>
+        <button
+          onClick={() => handleSelect("ru")}
+          onMouseEnter={() => setHovering("ru")}
+          onMouseLeave={() => setHovering(null)}
+          className={`group w-80 border rounded-lg p-10 text-left transition-all duration-300 ${
+            selected === "ru"
+              ? "border-primary bg-primary/10 scale-[1.02]"
+              : hovering === "ru"
+                ? "border-primary/50 bg-card"
+                : "border-border bg-card/50"
+          }`}
+        >
+          <div className="font-serif text-3xl mb-4 text-foreground">На русском</div>
+          <div className="text-base text-foreground/70 leading-relaxed mb-6">
+            Романы · Рассказы · Сценарии · Интерактивные истории
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Русский интерфейс и язык текста
+          </div>
+        </button>
       </div>
 
       <div className="text-sm text-muted-foreground">
-        可在设置中更改 · Can be changed in Settings
+        Можно изменить в настройках · Can be changed in Settings · 可在设置中更改
       </div>
     </div>
   );

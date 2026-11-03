@@ -201,7 +201,7 @@ function CoverConfigCard() {
       </div>
 
       <label className="space-y-1.5">
-        <span className="block text-xs font-medium text-muted-foreground/70">Base URL</span>
+        <span className="block text-xs font-medium text-muted-foreground/70">{tr("Base URL", "Base URL")}</span>
         <input
           type="url"
           value={baseUrl}
@@ -218,7 +218,7 @@ function CoverConfigCard() {
       </label>
 
       <label className="space-y-1.5">
-        <span className="block text-xs font-medium text-muted-foreground/70">API Key</span>
+        <span className="block text-xs font-medium text-muted-foreground/70">{tr("API Key", "API Key")}</span>
         <div className="relative">
           <input
             type={showKey ? "text" : "password"}

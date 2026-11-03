@@ -1,5 +1,7 @@
 "use client";
 
+import { tr } from "../../lib/app-language";
+
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
   Collapsible,
@@ -156,12 +158,12 @@ export type ReasoningTriggerProps = ComponentProps<
 
 const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
-    return <Shimmer duration={1}>Thinking...</Shimmer>;
+    return <Shimmer duration={1}>{tr("Thinking...", "Thinking...")}</Shimmer>;
   }
   if (duration === undefined) {
-    return <p>Thought for a few seconds</p>;
+    return <p>{tr("Thought for a few seconds", "Thought for a few seconds")}</p>;
   }
-  return <p>Thought for {duration} seconds</p>;
+  return <p>{tr("Thought for", "Thought for")}{duration}{tr("seconds", "seconds")}</p>;
 };
 
 export const ReasoningTrigger = memo(

@@ -1,4 +1,5 @@
 import type { CliLanguage } from "../localization.js";
+import { translateRussian } from "@actalk/inkos-core/localization/ru";
 
 const SLASH_COMMAND_VARIANTS: ReadonlyArray<{ zh: string; en: string }> = [
   { zh: "/new 输入你的想法", en: "/new describe your idea" },
@@ -18,7 +19,7 @@ const SLASH_COMMAND_VARIANTS: ReadonlyArray<{ zh: string; en: string }> = [
 ];
 
 export function buildSlashCommands(language: CliLanguage = "zh"): readonly string[] {
-  return SLASH_COMMAND_VARIANTS.map((variant) => (language === "en" ? variant.en : variant.zh));
+  return SLASH_COMMAND_VARIANTS.map((variant) => language === "ru" ? translateRussian(variant.en) : language === "en" ? variant.en : variant.zh);
 }
 
 export const SLASH_COMMANDS = buildSlashCommands("zh");

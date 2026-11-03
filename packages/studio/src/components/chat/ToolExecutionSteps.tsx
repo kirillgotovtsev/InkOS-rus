@@ -1,3 +1,4 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
 import { memo, useMemo, useState, useEffect } from "react";
 import type { ChatActionPayload, ChatRequestedIntent, ChatSessionKind, ToolExecution, PipelineStage } from "../../store/chat/types";
 import {
@@ -70,18 +71,18 @@ function StageIcon({ status }: { status: PipelineStage["status"] }) {
 
 function formatProgress(progress: NonNullable<PipelineStage["progress"]>): string {
   const secs = Math.round(progress.elapsedMs / 1000);
-  const statusLabel = progress.status === "thinking" ? tr("思考中", "Thinking") : progress.status ?? "";
+  const statusLabel = progress.status === "thinking" ? tr("思考中", "Thinking") : tr(progress.status ?? "", progress.status ?? "");
   const chars = progress.totalChars > 0
-    ? progress.chineseChars > 0 ? `${progress.totalChars}字` : `${progress.totalChars} chars`
+    ? tr(`${progress.totalChars}字`, messageTemplate("{{0}} chars", progress.totalChars))
     : "";
-  const parts = [statusLabel, `${secs}s`, chars].filter(Boolean);
+  const parts = [statusLabel, tr(`${secs}秒`, messageTemplate("{{0}}s", secs)), chars].filter(Boolean);
   return parts.join(" · ");
 }
 
 function formatDuration(startedAt: number, completedAt?: number): string {
   const ms = (completedAt ?? Date.now()) - startedAt;
   const secs = Math.round(ms / 1000);
-  return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return secs < 60 ? tr(`${secs}秒`, messageTemplate("{{0}}s", secs)) : tr(`${Math.floor(secs / 60)}分 ${secs % 60}秒`, messageTemplate("{{0}}m {{1}}s", Math.floor(secs / 60), secs % 60));
 }
 
 function encodeProjectPath(path: string): string {
@@ -284,7 +285,7 @@ function ChapterContextTracePreview({ exec }: { exec: ToolExecution }) {
         {traces.map((trace) => (
           <details key={`${trace.chapterNumber ?? 0}:${trace.tracePath}`} className="rounded-lg border border-border/40 px-2.5 py-2">
             <summary className="cursor-pointer select-none font-medium text-foreground">
-              {trace.chapterNumber ? tr(`第 ${trace.chapterNumber} 章`, `Chapter ${trace.chapterNumber}`) : tr("章节", "Chapter")}
+              {trace.chapterNumber ? tr(`第 ${trace.chapterNumber} 章`, messageTemplate("Chapter {{0}}", trace.chapterNumber)) : tr("章节", "Chapter")}
               {trace.retrievalEngine ? ` · ${trace.retrievalEngine}` : ""}
             </summary>
             <div className="mt-2 space-y-1.5 text-muted-foreground">
@@ -406,7 +407,7 @@ function ChapterRevisionPreview({ exec }: { exec: ToolExecution }) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[15px] font-semibold text-foreground">
-          {details.chapterNumber ? tr(`第 ${details.chapterNumber} 章修订`, `Chapter ${details.chapterNumber} revision`) : tr("章节修订", "Chapter revision")}
+          {details.chapterNumber ? tr(`第 ${details.chapterNumber} 章修订`, messageTemplate("Chapter {{0}} revision", details.chapterNumber)) : tr("章节修订", "Chapter revision")}
         </div>
         <div className={`rounded-full px-2 py-0.5 text-[12px] font-semibold ${changed ? "bg-emerald-500/15 text-emerald-600" : "bg-secondary text-muted-foreground"}`}>
           {changed ? tr("已更新", "Updated") : tr("无变化", "No change")}
@@ -427,7 +428,7 @@ function ChapterStateResyncPreview({ exec }: { exec: ToolExecution }) {
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[15px] font-semibold text-foreground">
-          {details.chapterNumber ? tr(`第 ${details.chapterNumber} 章状态已同步`, `Chapter ${details.chapterNumber} state resynced`) : tr("章节状态已同步", "Chapter state resynced")}
+          {details.chapterNumber ? tr(`第 ${details.chapterNumber} 章状态已同步`, messageTemplate("Chapter {{0}} state resynced", details.chapterNumber)) : tr("章节状态已同步", "Chapter state resynced")}
         </div>
         <div className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[12px] font-semibold text-emerald-600">
           {tr("已同步", "Synced")}
@@ -689,7 +690,7 @@ function PlaySceneImagePreview({ details }: { details: PlayToolDetails }) {
       />
       {details.turn != null && (
         <div className="border-t border-border/40 px-3 py-2.5 text-[14px] leading-6 text-muted-foreground">
-          {tr(`第 ${Math.trunc(details.turn)} 幕配图`, `Scene ${Math.trunc(details.turn)} illustration`)}
+          {tr(`第 ${Math.trunc(details.turn)} 幕配图`, messageTemplate("Scene {{0}} illustration", Math.trunc(details.turn)))}
         </div>
       )}
     </div>
@@ -849,7 +850,7 @@ function PlayEditPreview({ exec }: { exec: ToolExecution }) {
     details.updatedVisualContract ? tr("视觉契约", "Visual contract") : "",
     details.updatedPremise ? tr("世界前提", "World premise") : "",
     details.updatedEntities && details.updatedEntities > 0
-      ? tr(`${details.updatedEntities} 张卡片`, `${details.updatedEntities} cards`)
+      ? tr(`${details.updatedEntities} 张卡片`, messageTemplate("{{0}} cards", details.updatedEntities))
       : "",
   ].filter(Boolean);
   return (
@@ -1091,7 +1092,7 @@ function UtilityToolsGroup({ execs }: { execs: ToolExecution[] }) {
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer text-xs text-muted-foreground">
         <Wrench size={12} />
-        <span>{tr(`${execs.length} 个文件操作`, `${execs.length} file operation${execs.length === 1 ? "" : "s"}`)}</span>
+        <span>{tr(`${execs.length} 个文件操作`, messageTemplate("{{0}} file operation{{1}}", execs.length, execs.length === 1 ? "" : "s"))}</span>
         {allDone && !hasError && <CheckCircle2 size={10} className="text-green-600 dark:text-green-400" />}
         {hasError && <XCircle size={10} className="text-destructive" />}
         {!allDone && <Loader2 size={10} className="animate-spin text-primary" />}

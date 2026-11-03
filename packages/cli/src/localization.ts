@@ -1,6 +1,7 @@
+import { messageTemplate, renderLocalizedMessage, type MessageTemplate } from "@actalk/inkos-core/localization/ru";
 import { formatLengthCount, resolveLengthCountingMode, type Observation } from "@actalk/inkos-core";
 
-export type CliLanguage = "zh" | "en";
+export type CliLanguage = "zh" | "en" | "ru";
 
 type WriteResultShape = {
   readonly chapterNumber: number;
@@ -16,8 +17,8 @@ type ImportResultShape = {
   readonly continueBookId: string;
 };
 
-function localize(language: CliLanguage, messages: { zh: string; en: string }): string {
-  return language === "en" ? messages.en : messages.zh;
+function localize(language: CliLanguage, messages: { zh: string; en: string | MessageTemplate }): string {
+  return language === "zh" ? messages.zh : renderLocalizedMessage(messages.en, language);
 }
 
 function normalizeCliLanguageTag(value: string | undefined): CliLanguage | undefined {
@@ -26,6 +27,9 @@ function normalizeCliLanguageTag(value: string | undefined): CliLanguage | undef
   }
 
   const normalized = value.trim().toLowerCase();
+  if (normalized.startsWith("ru")) {
+    return "ru";
+  }
   if (normalized.startsWith("en")) {
     return "en";
   }
@@ -61,21 +65,21 @@ export function formatBookCreateCreating(
 ): string {
   return localize(language, {
     zh: `创建书籍 "${title}"（${genre} / ${platform}）...`,
-    en: `Creating book "${title}" (${genre} / ${platform})...`,
+    en: messageTemplate("Creating book \"{{0}}\" ({{1}} / {{2}})...", title, genre, platform),
   });
 }
 
 export function formatBookCreateCreated(language: CliLanguage, bookId: string): string {
   return localize(language, {
     zh: `已创建书籍：${bookId}`,
-    en: `Book created: ${bookId}`,
+    en: messageTemplate("Book created: {{0}}", bookId),
   });
 }
 
 export function formatBookCreateLocation(language: CliLanguage, bookId: string): string {
   return localize(language, {
     zh: `  位置：works/${bookId}/source/`,
-    en: `  Location: works/${bookId}/source/`,
+    en: messageTemplate("  Location: works/{{0}}/source/", bookId),
   });
 }
 
@@ -89,7 +93,7 @@ export function formatBookCreateFoundationReady(language: CliLanguage): string {
 export function formatBookCreateNextStep(language: CliLanguage, bookId: string): string {
   return localize(language, {
     zh: `下一步：inkos write next ${bookId}`,
-    en: `Next: inkos write next ${bookId}`,
+    en: messageTemplate("Next: inkos write next {{0}}", bookId),
   });
 }
 
@@ -101,7 +105,7 @@ export function formatWriteNextProgress(
 ): string {
   return localize(language, {
     zh: `[${current}/${total}] 为「${bookId}」撰写章节...`,
-    en: `[${current}/${total}] Writing chapter for "${bookId}"...`,
+    en: messageTemplate("[{{0}}/{{1}}] Writing chapter for \"{{2}}\"...", current, total, bookId),
   });
 }
 
@@ -113,15 +117,15 @@ export function formatWriteNextResultLines(
   const lines = [
     localize(language, {
       zh: `  第${result.chapterNumber}章：${result.title}`,
-      en: `  Chapter ${result.chapterNumber}: ${result.title}`,
+      en: messageTemplate("  Chapter {{0}}: {{1}}", result.chapterNumber, result.title),
     }),
     localize(language, {
       zh: `  字数：${lengthLabel}`,
-      en: `  Length: ${lengthLabel}`,
+      en: messageTemplate("  Length: {{0}}", lengthLabel),
     }),
     localize(language, {
       zh: `  审查观察：${result.observations.length}`,
-      en: `  Review observations: ${result.observations.length}`,
+      en: messageTemplate("  Review observations: {{0}}", result.observations.length),
     }),
   ];
 
@@ -153,7 +157,7 @@ export function formatAutoWriteStart(
 ): string {
   return localize(language, {
     zh: `自动写作「${bookId}」：从第${startChapter}章连续写到第${targetChapter}章...`,
-    en: `Auto-writing "${bookId}": chapter ${startChapter} through chapter ${targetChapter}...`,
+    en: messageTemplate("Auto-writing \"{{0}}\": chapter {{1}} through chapter {{2}}...", bookId, startChapter, targetChapter),
   });
 }
 
@@ -165,7 +169,7 @@ export function formatAutoWriteAlreadyComplete(
 ): string {
   return localize(language, {
     zh: `「${bookId}」已写到第${writtenChapters}章（目标第${targetChapter}章），无需继续。`,
-    en: `"${bookId}" already has ${writtenChapters} chapter(s) written (target: chapter ${targetChapter}). Nothing to do.`,
+    en: messageTemplate("\"{{0}}\" already has {{1}} chapter(s) written (target: chapter {{2}}). Nothing to do.", bookId, writtenChapters, targetChapter),
   });
 }
 
@@ -185,13 +189,17 @@ export function formatNotifyCommandTitle(
   bookName: string | undefined,
   succeeded: boolean,
 ): string {
+  if (language === "ru") {
+    const label = { "write-next": "Написание", "write-rewrite": "Переписывание", revise: "Правка", audit: "Проверка", auto: "Автонаписание" }[action];
+    return `${succeeded ? "✅ Готово" : "❌ Ошибка"}: ${label}${bookName === undefined ? "" : `: ${bookName}`}`;
+  }
   const label = localize(language, NOTIFY_ACTION_LABELS[action]);
   const book = bookName === undefined
     ? ""
-    : localize(language, { zh: `《${bookName}》`, en: `: ${bookName}` });
+    : localize(language, { zh: `《${bookName}》`, en: messageTemplate(": {{0}}", bookName) });
   return succeeded
-    ? localize(language, { zh: `✅ ${label}完成${book}`, en: `✅ ${label} complete${book}` })
-    : localize(language, { zh: `❌ ${label}失败${book}`, en: `❌ ${label} failed${book}` });
+    ? localize(language, { zh: `✅ ${label}完成${book}`, en: messageTemplate("✅ {{0}} complete{{1}}", label, book) })
+    : localize(language, { zh: `❌ ${label}失败${book}`, en: messageTemplate("❌ {{0}} failed{{1}}", label, book) });
 }
 
 export function formatNotifyBatchWriteBody(
@@ -208,13 +216,13 @@ export function formatNotifyBatchWriteBody(
   const lines = [
     localize(language, {
       zh: `本次完成 ${chapters.length} 章（第${first.chapterNumber}章到第${last.chapterNumber}章）`,
-      en: `${chapters.length} chapter(s) written (chapter ${first.chapterNumber} to ${last.chapterNumber})`,
+      en: messageTemplate("{{0}} chapter(s) written (chapter {{1}} to {{2}})", chapters.length, first.chapterNumber, last.chapterNumber),
     }),
     ...chapters.map((ch) => {
       const lengthLabel = formatLengthCount(ch.wordCount, resolveLengthCountingMode(language));
       return localize(language, {
         zh: `第${ch.chapterNumber}章 ${ch.title} | ${lengthLabel} | ${ch.observationCount} 条观察`,
-        en: `Chapter ${ch.chapterNumber} ${ch.title} | ${lengthLabel} | ${ch.observationCount} observation(s)`,
+        en: messageTemplate("Chapter {{0}} {{1}} | {{2}} | {{3}} observation(s)", ch.chapterNumber, ch.title, lengthLabel, ch.observationCount),
       });
     }),
   ];
@@ -231,7 +239,7 @@ export function formatNotifyAuditBody(
 ): string {
   const head = localize(language, {
     zh: `第${result.chapterNumber}章审查完成（${result.issueCount} 条观察）`,
-    en: `Chapter ${result.chapterNumber} review completed (${result.issueCount} observation(s))`,
+    en: messageTemplate("Chapter {{0}} review completed ({{1}} observation(s))", result.chapterNumber, result.issueCount),
   });
   return result.summary ? `${head}\n${result.summary}` : head;
 }
@@ -248,13 +256,13 @@ export function formatNotifyReviseBody(
   if (!result.changed) {
     return localize(language, {
       zh: `第${result.chapterNumber}章没有可执行修改`,
-      en: `Chapter ${result.chapterNumber} had no actionable change`,
+      en: messageTemplate("Chapter {{0}} had no actionable change", result.chapterNumber),
     });
   }
   const lengthLabel = formatLengthCount(result.wordCount, resolveLengthCountingMode(language));
   return localize(language, {
     zh: `第${result.chapterNumber}章已修订 | ${lengthLabel} | 复审观察 ${result.observationCount} 条`,
-    en: `Chapter ${result.chapterNumber} revised | ${lengthLabel} | ${result.observationCount} review observation(s)`,
+    en: messageTemplate("Chapter {{0}} revised | {{1}} | {{2}} review observation(s)", result.chapterNumber, lengthLabel, result.observationCount),
   });
 }
 
@@ -262,7 +270,7 @@ export function formatNotifyFailureBody(language: CliLanguage, error: unknown): 
   const detail = error instanceof Error ? error.message : String(error);
   return localize(language, {
     zh: `错误：${detail}`,
-    en: `Error: ${detail}`,
+    en: messageTemplate("Error: {{0}}", detail),
   });
 }
 
@@ -273,7 +281,7 @@ export function formatImportChaptersDiscovery(
 ): string {
   return localize(language, {
     zh: `发现 ${chapterCount} 章，准备导入到「${bookId}」。`,
-    en: `Found ${chapterCount} chapters to import into "${bookId}".`,
+    en: messageTemplate("Found {{0}} chapters to import into \"{{1}}\".", chapterCount, bookId),
   });
 }
 
@@ -283,7 +291,7 @@ export function formatImportChaptersResume(
 ): string {
   return localize(language, {
     zh: `从第 ${resumeFrom} 章继续导入。`,
-    en: `Resuming from chapter ${resumeFrom}.`,
+    en: messageTemplate("Resuming from chapter {{0}}.", resumeFrom),
   });
 }
 
@@ -299,20 +307,20 @@ export function formatImportChaptersComplete(
     }),
     localize(language, {
       zh: `  已导入章节：${result.importedCount}`,
-      en: `  Chapters imported: ${result.importedCount}`,
+      en: messageTemplate("  Chapters imported: {{0}}", result.importedCount),
     }),
     localize(language, {
       zh: `  总长度：${lengthLabel}`,
-      en: `  Total length: ${lengthLabel}`,
+      en: messageTemplate("  Total length: {{0}}", lengthLabel),
     }),
     localize(language, {
       zh: `  下一章编号：${result.nextChapter}`,
-      en: `  Next chapter number: ${result.nextChapter}`,
+      en: messageTemplate("  Next chapter number: {{0}}", result.nextChapter),
     }),
     "",
     localize(language, {
       zh: `运行 "inkos write next ${result.continueBookId}" 继续写作。`,
-      en: `Run "inkos write next ${result.continueBookId}" to continue writing.`,
+      en: messageTemplate("Run \"inkos write next {{0}}\" to continue writing.", result.continueBookId),
     }),
   ];
 }
@@ -324,7 +332,7 @@ export function formatImportCanonStart(
 ): string {
   return localize(language, {
     zh: `把 "${parentBookId}" 的正典导入到 "${targetBookId}"...`,
-    en: `Importing canon from "${parentBookId}" into "${targetBookId}"...`,
+    en: messageTemplate("Importing canon from \"{{0}}\" into \"{{1}}\"...", parentBookId, targetBookId),
   });
 }
 
@@ -344,7 +352,7 @@ export function formatImportCanonComplete(language: CliLanguage): string[] {
 export function formatListModelsEmpty(language: CliLanguage, service: string): string {
   return localize(language, {
     zh: `${service} 没有可用模型（可能需要 --api-key 和 --base-url）`,
-    en: `No models available for ${service} (you may need --api-key and --base-url)`,
+    en: messageTemplate("No models available for {{0}} (you may need --api-key and --base-url)", service),
   });
 }
 
@@ -355,7 +363,7 @@ export function formatListModelsHeader(
 ): string {
   return localize(language, {
     zh: `${service}：${count} 个模型`,
-    en: `${service}: ${count} model(s)`,
+    en: messageTemplate("{{0}}: {{1}} model(s)", service, count),
   });
 }
 
@@ -414,7 +422,7 @@ export function formatFanficSourceDirEmptyError(sourcePath: string): string {
 export function formatChapterSyncNoChanges(language: CliLanguage, checked: number): string {
   return localize(language, {
     zh: `已核对 ${checked} 章，index.json 字数无需修正。`,
-    en: `Checked ${checked} chapter(s); index.json word counts already match the files.`,
+    en: messageTemplate("Checked {{0}} chapter(s); index.json word counts already match the files.", checked),
   });
 }
 
@@ -427,21 +435,21 @@ export function formatChapterSyncChange(
   const to = formatLengthCount(change.wordCount, countingMode);
   return localize(language, {
     zh: `  第${change.number}章 ${change.title}：${from} → ${to}`,
-    en: `  Chapter ${change.number} ${change.title}: ${from} → ${to}`,
+    en: messageTemplate("  Chapter {{0}} {{1}}: {{2}} → {{3}}", change.number, change.title, from, to),
   });
 }
 
 export function formatChapterSyncSummary(language: CliLanguage, changed: number, checked: number): string {
   return localize(language, {
     zh: `已核对 ${checked} 章，修正了 ${changed} 章的 index.json 字数。`,
-    en: `Checked ${checked} chapter(s); corrected ${changed} index.json word count(s).`,
+    en: messageTemplate("Checked {{0}} chapter(s); corrected {{1}} index.json word count(s).", checked, changed),
   });
 }
 
 export function formatChapterSyncMissingFiles(language: CliLanguage, numbers: ReadonlyArray<number>): string {
   return localize(language, {
     zh: `警告：index.json 中的第 ${numbers.join("、")} 章找不到对应的章节文件，已跳过。`,
-    en: `Warning: chapter(s) ${numbers.join(", ")} exist in index.json but have no chapter file on disk; skipped.`,
+    en: messageTemplate("Warning: chapter(s) {{0}} exist in index.json but have no chapter file on disk; skipped.", numbers.join(", ")),
   });
 }
 
@@ -473,21 +481,21 @@ export function formatChapterDeleteDone(
     : localize(language, { zh: "（章节文件已不存在，未移动）", en: "(chapter file was already gone; nothing moved)" });
   return localize(language, {
     zh: `已删除第${params.number}章 ${params.title}：章节文件保留在 ${trashNote}，索引和故事状态已回滚到第${params.rolledBackTo}章。`,
-    en: `Deleted chapter ${params.number} ${params.title}: chapter file kept at ${trashNote}; index and story state rolled back to chapter ${params.rolledBackTo}.`,
+    en: messageTemplate("Deleted chapter {{0}} {{1}}: chapter file kept at {{2}}; index and story state rolled back to chapter {{3}}.", params.number, params.title, trashNote, params.rolledBackTo),
   });
 }
 
 export function formatBookBackupCreated(language: CliLanguage, bookId: string, backupId: string): string {
   return localize(language, {
     zh: `已备份 ${bookId} → .inkos/backups/${bookId}/${backupId}/`,
-    en: `Backed up ${bookId} → .inkos/backups/${bookId}/${backupId}/`,
+    en: messageTemplate("Backed up {{0}} → .inkos/backups/{{1}}/{{2}}/", bookId, bookId, backupId),
   });
 }
 
 export function formatBookBackupListEmpty(language: CliLanguage, bookId: string): string {
   return localize(language, {
     zh: `${bookId} 还没有备份。用 inkos book backup ${bookId} 创建一份。`,
-    en: `No backups for ${bookId} yet. Create one with: inkos book backup ${bookId}`,
+    en: messageTemplate("No backups for {{0}} yet. Create one with: inkos book backup {{1}}", bookId, bookId),
   });
 }
 
@@ -498,7 +506,7 @@ export function formatBookRestoreDone(
   const preNote = params.preRestoreBackupId
     ? localize(language, {
         zh: `恢复前的状态已自动备份为 ${params.preRestoreBackupId}。`,
-        en: `The pre-restore state was automatically backed up as ${params.preRestoreBackupId}.`,
+        en: messageTemplate("The pre-restore state was automatically backed up as {{0}}.", params.preRestoreBackupId),
       })
     : localize(language, {
         zh: "书目录当时不存在，未创建恢复前备份。",
@@ -506,6 +514,6 @@ export function formatBookRestoreDone(
       });
   return localize(language, {
     zh: `已把 ${params.bookId} 恢复到备份 ${params.backupId}。${preNote}`,
-    en: `Restored ${params.bookId} to backup ${params.backupId}. ${preNote}`,
+    en: messageTemplate("Restored {{0}} to backup {{1}}. {{2}}", params.bookId, params.backupId, preNote),
   });
 }

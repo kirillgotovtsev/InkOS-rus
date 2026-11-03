@@ -1,3 +1,4 @@
+import { tr } from "../lib/app-language";
 import { useMemo, useState, useCallback } from "react";
 import { useApi, buildApiUrl } from "../hooks/use-api";
 import { useColors } from "../hooks/use-colors";
@@ -54,13 +55,13 @@ export function StoryPlayer({
           onClick={reset}
           data-testid="player-start"
           className={`px-6 py-3 rounded-lg ${c.btnPrimary}`}
-        >开始游玩</button>
+        >{tr("开始游玩", "Start playing")}</button>
       </div>
     );
   }
 
   const node = graph.nodes.find((n) => n.id === currentId);
-  if (!node) return <div className="text-destructive">节点缺失：{currentId}</div>;
+  if (!node) return <div className="text-destructive">{tr("节点缺失：", "Missing node:")}{currentId}</div>;
 
   const isEnding = node.type === "ending";
   const choices = visibleChoices(node, vars);
@@ -111,12 +112,9 @@ export function StoryPlayer({
           <div className="text-lg" data-testid="player-ending-title">
             {graph.endings.find((e) => e.nodeId === node.id)?.title ?? node.title}
           </div>
-          <div className={c.muted} data-testid="player-unlocked">
-            已解锁结局 {unlocked.length} / {graph.endings.length}
+          <div className={c.muted} data-testid="player-unlocked">{tr("已解锁结局", "Unlocked endings")}{unlocked.length} / {graph.endings.length}
           </div>
-          <button onClick={reset} data-testid="player-restart" className={`px-5 py-2 rounded ${c.btnSecondary}`}>
-            重新开始
-          </button>
+          <button onClick={reset} data-testid="player-restart" className={`px-5 py-2 rounded ${c.btnSecondary}`}>{tr("重新开始", "Restart")}</button>
         </div>
       ) : (
         <div className="space-y-2" data-testid="player-choices">
@@ -130,7 +128,7 @@ export function StoryPlayer({
               {choice.text}
             </button>
           ))}
-          {choices.length === 0 && <div className="text-destructive" data-testid="player-deadend">此路不通</div>}
+          {choices.length === 0 && <div className="text-destructive" data-testid="player-deadend">{tr("此路不通", "Dead end")}</div>}
         </div>
       )}
 

@@ -151,10 +151,10 @@ export function ServiceConfigSourceCard({ onChange }: { onChange?: () => void })
             {tr("检测到 LLM 环境变量覆盖：", "Detected LLM environment variable override:")}
             <span className="font-medium"> {envLabel ?? tr("已检测到但未定位来源", "detected but source not located")}</span>
           </div>
-          {activeEnvSummary.baseUrl ? <div>Base URL: <span className="font-mono text-foreground">{activeEnvSummary.baseUrl}</span></div> : null}
-          {activeEnvSummary.model ? <div>Model: <span className="font-mono text-foreground">{activeEnvSummary.model}</span></div> : null}
-          {activeEnvSummary.provider ? <div>Provider: <span className="font-mono text-foreground">{activeEnvSummary.provider}</span></div> : null}
-          <div>API Key: <span className="text-foreground">{activeEnvSummary.hasApiKey ? tr("已设置", "set") : tr("未设置", "not set")}</span></div>
+          {activeEnvSummary.baseUrl ? <div>{tr("Base URL:", "Base URL:")}<span className="font-mono text-foreground">{activeEnvSummary.baseUrl}</span></div> : null}
+          {activeEnvSummary.model ? <div>{tr("Model:", "Model:")}<span className="font-mono text-foreground">{activeEnvSummary.model}</span></div> : null}
+          {activeEnvSummary.provider ? <div>{tr("Provider:", "Provider:")}<span className="font-mono text-foreground">{activeEnvSummary.provider}</span></div> : null}
+          <div>{tr("API Key:", "API Key:")}<span className="text-foreground">{activeEnvSummary.hasApiKey ? tr("已设置", "set") : tr("未设置", "not set")}</span></div>
           <div className="text-muted-foreground/70 pt-1">
             {tr(
               "当前虽然检测到 .env，但 Studio 和 Agent 请求不会直接使用这套覆盖；点击“导入检测到的配置”后，会把它保存为 Studio 服务配置。",

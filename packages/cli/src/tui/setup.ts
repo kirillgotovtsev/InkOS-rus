@@ -75,6 +75,23 @@ export interface InteractiveSetupCopy {
 }
 
 export function buildInteractiveSetupCopy(locale: TuiLocale): InteractiveSetupCopy {
+  if (locale === "ru") {
+    return {
+      title: "Настройка модели",
+      subtitle: "Подключите поставщика модели, чтобы начать писать.",
+      steps: { provider: "Поставщик", baseUrl: "Базовый URL", apiKey: "API-ключ", model: "Модель", scope: "Где сохранить" },
+      hints: {
+        provider: "openai / anthropic / kkaiapi / custom (совместимый с OpenAI прокси)",
+        baseUrl: "Адрес вашего API",
+        apiKey: "Вставьте API-ключ выбранного поставщика.",
+        model: "Например: gpt-4o, claude-sonnet-4-20250514, deepseek-chat",
+        scope: "global = все проекты, project = только эта папка",
+      },
+      defaults: { provider: "openai", baseUrl: "(по умолчанию)", scope: "[global]" },
+      scopeChoices: { global: "все проекты", project: "эта папка" },
+      savedTo: "Сохранено в",
+    };
+  }
   if (locale === "en") {
     return {
       title: "LLM Setup",
@@ -141,6 +158,13 @@ export function buildAutoInitMessages(projectName: string, locale: TuiLocale): {
   readonly initialized: string;
   readonly envTemplateHeader: string;
 } {
+  if (locale === "ru") {
+    return {
+      initializing: `Создание проекта в ${projectName}/…`,
+      initialized: "Проект создан",
+      envTemplateHeader: "# Настройки модели: запустите inkos tui для интерактивной настройки",
+    };
+  }
   if (locale === "en") {
     return {
       initializing: `Initializing project in ${projectName}/ ...`,
@@ -267,7 +291,7 @@ async function autoInit(cwd: string): Promise<void> {
   const config = {
     name: projectName,
     version: "0.1.0",
-    language: "zh",
+    language: locale === "ru" ? "ru" : locale === "en" ? "en" : "zh",
     llm: {
       provider: process.env.INKOS_LLM_PROVIDER ?? "openai",
       baseUrl: process.env.INKOS_LLM_BASE_URL ?? "",

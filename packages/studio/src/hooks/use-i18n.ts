@@ -1,8 +1,10 @@
+import { getAppLanguage } from "../lib/app-language";
 import { useApi } from "./use-api";
+import { translateRussian } from "@actalk/inkos-core/localization/ru";
 
-type Lang = "zh" | "en";
+type Lang = "zh" | "en" | "ru";
 
-const strings = {
+export const strings = {
   // Header
   "nav.books": { zh: "书籍", en: "Books" },
   "nav.newBook": { zh: "新建书籍", en: "New Book" },
@@ -374,10 +376,10 @@ export type TFunction = (key: StringKey) => string;
 
 export function useI18n() {
   const { data } = useApi<{ language: string }>("/project");
-  const lang: Lang = data?.language === "en" ? "en" : "zh";
+  const lang: Lang = data?.language === "ru" ? "ru" : data?.language === "en" ? "en" : data?.language === "zh" ? "zh" : getAppLanguage();
 
   function t(key: StringKey): string {
-    return strings[key][lang];
+    return lang === "ru" ? translateRussian(strings[key].en) : strings[key][lang];
   }
 
   return { t, lang };

@@ -1,3 +1,4 @@
+import { tr } from "../../lib/app-language";
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
@@ -70,7 +71,7 @@ function DialogContent({
           >
             <XIcon
             />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{tr("Close", "Close")}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -107,9 +108,7 @@ function DialogFooter({
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
-        </DialogPrimitive.Close>
+        <DialogPrimitive.Close render={<Button variant="outline" />}>{tr("Close", "Close")}</DialogPrimitive.Close>
       )}
     </div>
   )

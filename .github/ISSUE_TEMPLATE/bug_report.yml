@@ -1,71 +1,65 @@
-name: Bug Report
-description: Something isn't working as expected
+name: Сообщение об ошибке
+description: Программа работает не так, как ожидалось
 labels: ["bug"]
 body:
   - type: textarea
     id: description
     attributes:
-      label: What happened?
-      description: Describe the bug clearly. Include the exact error message if any.
+      label: Что произошло?
+      description: Опишите ошибку. Если есть сообщение об ошибке, приведите его дословно.
     validations:
       required: true
-
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
-      description: Minimal steps to reproduce the issue.
+      label: Как воспроизвести
+      description: Минимальные шаги, после которых возникает проблема.
       placeholder: |
-        1. inkos init test
-        2. inkos book create --title '...' --genre xuanhuan
+        1. inkos init test --lang ru
+        2. inkos book create --title '...' --genre other --lang ru
         3. inkos write next ...
-        4. See error: ...
+        4. Сообщение об ошибке: ...
     validations:
       required: true
-
   - type: textarea
     id: expected
     attributes:
-      label: Expected behavior
-      description: What should have happened instead?
+      label: Ожидаемый результат
+      description: Что должно было произойти?
     validations:
       required: true
-
   - type: input
     id: version
     attributes:
-      label: InkOS version
-      description: Output of `inkos --version`
-      placeholder: "0.4.5"
+      label: Версия InkOS
+      description: Результат команды `inkos --version`; для сборки из Git укажите также коммит.
+      placeholder: "2.0.0"
     validations:
       required: true
-
   - type: dropdown
     id: os
     attributes:
-      label: Operating system
+      label: Операционная система
       options:
         - macOS
         - Linux
         - Windows (WSL)
-        - Windows (native)
+        - Windows (обычный запуск)
     validations:
       required: true
-
   - type: input
     id: model
     attributes:
-      label: LLM provider / model
-      description: e.g. openai/gpt-4o, anthropic/claude-sonnet, ollama/qwen3:8b
+      label: Сервис и модель
+      description: Например, openai/gpt-4o, anthropic/claude-sonnet или ollama/qwen3:8b. Ключ API не указывайте.
       placeholder: "openai/gpt-4o"
     validations:
       required: false
-
   - type: textarea
     id: logs
     attributes:
-      label: Relevant logs
-      description: Paste any error output, truncated chapter content, or debug logs.
+      label: Журнал ошибки
+      description: Приведите относящиеся к ошибке строки. Удалите ключи API, личные данные и фрагменты рукописей, которые не хотите публиковать.
       render: shell
     validations:
       required: false

@@ -1,6 +1,6 @@
 # Changelog
 
-[中文](CHANGELOG.md) | English
+[Русский](CHANGELOG.md) | [中文](CHANGELOG.zh-CN.md) | English
 
 ## v1.8.0
 

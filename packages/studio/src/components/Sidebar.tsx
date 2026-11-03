@@ -1,9 +1,10 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
 import { useEffect, useMemo, useState } from "react";
 import { useApi } from "../hooks/use-api";
 import { useNewSSEMessages, type SSEMessage } from "../hooks/use-sse";
 import { applyBookCollectionEvent, shouldRefetchBookCollections, shouldRefetchDaemonStatus } from "../hooks/use-book-activity";
 import type { TFunction } from "../hooks/use-i18n";
-import { tr } from "../lib/app-language";
+import { getAppLanguage, tr } from "../lib/app-language";
 import { setProjectChatSessionId } from "../pages/chat-page-state";
 import { useChatStore } from "../store/chat";
 import type { ChatRequestedIntent } from "../store/chat/types";
@@ -310,7 +311,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
               {t("nav.createSection")}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-1">
+          <div className={`grid ${getAppLanguage() === "ru" ? "grid-cols-1" : "grid-cols-2"} gap-1`}>
             <CreateItem icon={<BookPlus size={16} />} label={t("nav.createNovel")} active={activePage === "book-create"} onClick={handleOpenBookCreate} />
             <CreateItem icon={<ScrollText size={16} />} label={t("nav.createShort")} onClick={() => launchProjectMode("short")} />
             <CreateItem icon={<Clapperboard size={16} />} label={t("nav.createScript")} onClick={() => launchProjectMode("script")} />
@@ -341,7 +342,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                   <div className="group/book flex items-center">
                     <button
                       type="button"
-                      aria-label={isExpanded ? tr(`折叠 ${book.title}`, `Collapse ${book.title}`) : tr(`展开 ${book.title}`, `Expand ${book.title}`)}
+                      aria-label={isExpanded ? tr(`折叠 ${book.title}`, messageTemplate("Collapse {{0}}", book.title)) : tr(`展开 ${book.title}`, messageTemplate("Expand {{0}}", book.title))}
                       onClick={() => toggleBook(book.id)}
                       className="flex h-8 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground/60 hover:bg-secondary/30 hover:text-foreground transition-colors"
                     >
@@ -353,6 +354,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
                     <button
                       type="button"
                       onClick={() => openBook(book.id)}
+                      title={book.title}
                       className={`flex min-w-0 flex-1 items-center gap-1.5 py-1.5 pr-2 rounded-md text-[15px] leading-6 transition-colors ${
                         isActiveBook ? "text-foreground font-medium" : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                       }`}
@@ -705,7 +707,7 @@ export function Sidebar({ nav, activePage, sse, t }: {
         title={tr("删除会话", "Delete Session")}
         message={tr(
           `确认删除“${deleteTarget?.title ?? ""}”吗？该操作只删除这条会话，不影响书籍内容。`,
-          `Delete "${deleteTarget?.title ?? ""}"? This only removes the session; the book content is not affected.`,
+          messageTemplate("Delete \"{{0}}\"? This only removes the session; the book content is not affected.", deleteTarget?.title ?? ""),
         )}
         confirmLabel={tr("删除", "Delete")}
         cancelLabel={tr("取消", "Cancel")}
@@ -735,13 +737,13 @@ function formatRelativeTime(sessionId: string): string {
   const diff = Date.now() - rawTs;
   const minutes = Math.floor(diff / 60_000);
   if (minutes < 1) return tr("刚刚", "just now");
-  if (minutes < 60) return tr(`${minutes} 分钟`, `${minutes}m`);
+  if (minutes < 60) return tr(`${minutes} 分钟`, messageTemplate("{{0}}m", minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return tr(`${hours} 小时`, `${hours}h`);
+  if (hours < 24) return tr(`${hours} 小时`, messageTemplate("{{0}}h", hours));
   const days = Math.floor(hours / 24);
-  if (days < 30) return tr(`${days} 天`, `${days}d`);
+  if (days < 30) return tr(`${days} 天`, messageTemplate("{{0}}d", days));
   const months = Math.floor(days / 30);
-  return tr(`${months} 个月`, `${months}mo`);
+  return tr(`${months} 个月`, messageTemplate("{{0}}mo", months));
 }
 
 // Smooth collapse via grid-template-rows 0fr→1fr (content-height-agnostic, no JS measuring).
@@ -792,7 +794,7 @@ function CreateItem({ icon, label, active, onClick }: {
       }`}
     >
       <span className={`shrink-0 ${active ? "text-primary" : ""}`}>{icon}</span>
-      <span className="truncate">{label}</span>
+      <span className={getAppLanguage() === "ru" ? "min-w-0 whitespace-normal" : "truncate"}>{label}</span>
     </button>
   );
 }

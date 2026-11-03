@@ -1,3 +1,4 @@
+import { tr } from "../../lib/app-language";
 export function PlayChoicePanel(props: {
   readonly choices: ReadonlyArray<string>;
   readonly disabled: boolean;
@@ -7,7 +8,7 @@ export function PlayChoicePanel(props: {
   if (props.choices.length === 0) {
     return (
       <div className="px-4 py-3 text-center text-xs text-muted-foreground/60">
-        {props.disabled ? (props.isZh ? "推进中…" : "Advancing…") : (props.isZh ? "等待场景给出选项…" : "Waiting for choices…")}
+        {props.disabled ? (tr("推进中…", "Advancing…", props.isZh)) : (tr("等待场景给出选项…", "Waiting for choices…", props.isZh))}
       </div>
     );
   }

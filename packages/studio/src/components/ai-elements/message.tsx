@@ -1,5 +1,7 @@
 "use client";
 
+import { tr } from "../../lib/app-language";
+
 import { Button } from "@/components/ui/button";
 import {
   ButtonGroup,
@@ -262,7 +264,7 @@ export const MessageBranchPrevious = ({
 
   return (
     <Button
-      aria-label="Previous branch"
+      aria-label={tr("Previous branch", "Previous branch")}
       disabled={totalBranches <= 1}
       onClick={goToPrevious}
       size="icon-sm"
@@ -285,7 +287,7 @@ export const MessageBranchNext = ({
 
   return (
     <Button
-      aria-label="Next branch"
+      aria-label={tr("Next branch", "Next branch")}
       disabled={totalBranches <= 1}
       onClick={goToNext}
       size="icon-sm"
@@ -314,7 +316,7 @@ export const MessageBranchPage = ({
       )}
       {...props}
     >
-      {currentBranch + 1} of {totalBranches}
+      {currentBranch + 1}{tr("of", "of")}{totalBranches}
     </ButtonGroupText>
   );
 };

@@ -1,4 +1,5 @@
 import { getAppLanguage } from "./app-language";
+import { translateRussian } from "@actalk/inkos-core/localization/ru";
 
 const KNOWN_RUNTIME_REPLACEMENTS: ReadonlyArray<{
   readonly pattern: RegExp;
@@ -15,6 +16,7 @@ const KNOWN_RUNTIME_REPLACEMENTS: ReadonlyArray<{
 ];
 
 export function localizeKnownRuntimeMessage(message: string): string {
+  if (getAppLanguage() === "ru") return translateRussian(message);
   // Runtime messages arrive in English; in English mode show them as-is.
   if (getAppLanguage() === "en") return message;
   let localized = message;

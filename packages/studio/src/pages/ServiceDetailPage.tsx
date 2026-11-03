@@ -1,3 +1,4 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
 import { useState, useEffect } from "react";
 import { fetchJson } from "../hooks/use-api";
 import { useServiceStore } from "../store/service";
@@ -201,7 +202,7 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(tr(`删除“${label}”的配置和密钥？`, `Delete the config and key for “${label}”?`))) return;
+    if (!window.confirm(tr(`删除“${label}”的配置和密钥？`, messageTemplate("Delete the config and key for “{{0}}”?", label)))) return;
     setStatus({ state: "saving" });
     try {
       await deleteServiceConfig(effectiveServiceId);
@@ -248,7 +249,7 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
         setStatus(result.status);
         setSaveFeedback(tr(
           `已保存 ${result.status.models.length} 个模型，创作选择器将使用这份目录。`,
-          `Saved ${result.status.models.length} models. The writing picker will use this catalog.`,
+          messageTemplate("Saved {{0}} models. The writing picker will use this catalog.", result.status.models.length),
         ));
       } else {
         setStatus(result.status);
@@ -353,11 +354,11 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
             <span className="text-xs text-emerald-500">
               {saveFeedback ?? (
                 <>
-                  {tr(`连接成功，${models.length} 个模型`, `Connected, ${models.length} models`)}
+                  {tr(`连接成功，${models.length} 个模型`, messageTemplate("Connected, {{0}} models", models.length))}
                   {detectedModel
                     ? tr(
                         `，已自动匹配 ${detectedModel}${detectedConfig ? ` / ${detectedConfig.apiFormat === "anthropic" ? "Anthropic Messages" : detectedConfig.apiFormat === "responses" ? "Responses" : "Chat / Completions"} / ${detectedConfig.stream ? "流式" : "非流式"}` : ""}`,
-                        `, auto-matched ${detectedModel}${detectedConfig ? ` / ${detectedConfig.apiFormat === "anthropic" ? "Anthropic Messages" : detectedConfig.apiFormat === "responses" ? "Responses" : "Chat / Completions"} / ${detectedConfig.stream ? "streaming" : "non-streaming"}` : ""}`,
+                        messageTemplate(", auto-matched {{0}}{{1}}", detectedModel, detectedConfig ? ` / ${detectedConfig.apiFormat === "anthropic" ? "Anthropic Messages" : detectedConfig.apiFormat === "responses" ? "Responses" : "Chat / Completions"} / ${detectedConfig.stream ? "streaming" : "non-streaming"}` : ""),
                       )
                     : ""}
                 </>
@@ -400,7 +401,7 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
         {/* Models */}
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground/70 font-medium uppercase tracking-wider">
-            {tr(`模型目录（${models.length}）`, `Model catalog (${models.length})`)}
+            {tr(`模型目录（${models.length}）`, messageTemplate("Model catalog ({{0}})", models.length))}
           </p>
           <div className="flex gap-2">
             <input
@@ -439,7 +440,7 @@ export function ServiceDetailPage({ serviceId, nav }: { serviceId: string; nav: 
                     <button
                       type="button"
                       onClick={() => handleRemoveModel(m.id)}
-                      aria-label={tr(`移除模型 ${m.id}`, `Remove model ${m.id}`)}
+                      aria-label={tr(`移除模型 ${m.id}`, messageTemplate("Remove model {{0}}", m.id))}
                       className="rounded-sm opacity-60 hover:opacity-100"
                     >
                       <X size={11} />

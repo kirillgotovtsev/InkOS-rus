@@ -1,3 +1,4 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
 import { useState } from "react";
 import {
   AlertTriangle,
@@ -76,20 +77,16 @@ export function getNarrativeForecastPreviewDetails(exec: ToolExecution): Narrati
 export function buildNarrativeForecastSelectionInstruction(
   forecastId: string,
   branchId: string,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ru",
 ): string {
-  return language === "zh"
-    ? `请调用 select_narrative_branch，选择推演 ${forecastId} 的 ${branchId}。只保存候选计划，不修改正文、大纲或正史状态。`
-    : `Call select_narrative_branch for ${branchId} in forecast ${forecastId}. Save only the candidate plan; do not modify prose, outlines, or canonical state.`;
+  return tr(`请调用 select_narrative_branch，选择推演 ${forecastId} 的 ${branchId}。只保存候选计划，不修改正文、大纲或正史状态。`, messageTemplate("Call select_narrative_branch for {{0}} in forecast {{1}}. Save only the candidate plan; do not modify prose, outlines, or canonical state.", branchId, forecastId), language);
 }
 
 export function buildNarrativeForecastRecheckInstruction(
   forecastId: string,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ru",
 ): string {
-  return language === "zh"
-    ? `请调用 get_narrative_forecast，重新核验推演 ${forecastId} 是否已经过期。`
-    : `Call get_narrative_forecast for forecast ${forecastId} and report whether it is stale.`;
+  return tr(`请调用 get_narrative_forecast，重新核验推演 ${forecastId} 是否已经过期。`, messageTemplate("Call get_narrative_forecast for forecast {{0}} and report whether it is stale.", forecastId), language);
 }
 
 const RISK_LABELS: Readonly<Record<string, readonly [string, string]>> = {
@@ -107,7 +104,7 @@ function RiskPills({ risks, zh }: { risks: readonly ForecastRisk[]; zh: boolean 
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
         <ShieldCheck size={11} />
-        {zh ? "未发现硬风险" : "No hard risks"}
+        {tr("未发现硬风险", "No hard risks", zh)}
       </span>
     );
   }
@@ -171,7 +168,7 @@ function BranchCard({
         {branch.beats.map((beat) => (
           <li key={`${branch.branchId}-${beat.chapter}`} className="relative text-xs leading-5 text-foreground/90">
             <span className="absolute -left-[15px] top-[7px] h-1.5 w-1.5 rounded-full bg-primary/65" />
-            <span className="font-medium text-primary">{zh ? `第 ${beat.chapter} 章` : `Ch. ${beat.chapter}`}</span>
+            <span className="font-medium text-primary">{tr(`第 ${beat.chapter} 章`, messageTemplate("Ch. {{0}}", beat.chapter), zh)}</span>
             <span className="ml-1.5">{beat.summary}</span>
           </li>
         ))}
@@ -182,18 +179,18 @@ function BranchCard({
       <details className="group mt-3 border-t border-border/40 pt-2.5">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
           <ChevronRight size={13} className="transition-transform group-open:rotate-90" />
-          {zh ? "人物决定、变化与不确定性" : "Decisions, changes, uncertainties"}
+          {tr("人物决定、变化与不确定性", "Decisions, changes, uncertainties", zh)}
         </summary>
         <div className="mt-3 space-y-3">
           <ChangeList
-            title={zh ? "人物决定" : "Character decisions"}
+            title={tr("人物决定", "Character decisions", zh)}
             items={branch.characterDecisions.map((item) => `${item.character}：${item.decision}`)}
           />
-          <ChangeList title={zh ? "人物变化" : "Character changes"} items={branch.projectedChanges.characters} />
-          <ChangeList title={zh ? "关系变化" : "Relationship changes"} items={branch.projectedChanges.relationships} />
-          <ChangeList title={zh ? "世界变化" : "World changes"} items={branch.projectedChanges.world} />
-          <ChangeList title={zh ? "伏笔变化" : "Hook changes"} items={branch.projectedChanges.hooks} />
-          <ChangeList title={zh ? "不确定性" : "Uncertainties"} items={branch.uncertainties} />
+          <ChangeList title={tr("人物变化", "Character changes", zh)} items={branch.projectedChanges.characters} />
+          <ChangeList title={tr("关系变化", "Relationship changes", zh)} items={branch.projectedChanges.relationships} />
+          <ChangeList title={tr("世界变化", "World changes", zh)} items={branch.projectedChanges.world} />
+          <ChangeList title={tr("伏笔变化", "Hook changes", zh)} items={branch.projectedChanges.hooks} />
+          <ChangeList title={tr("不确定性", "Uncertainties", zh)} items={branch.uncertainties} />
           <p className="rounded-lg bg-muted/45 px-2.5 py-2 text-xs leading-5 text-muted-foreground">
             {branch.intentRationale}
           </p>
@@ -210,8 +207,8 @@ function BranchCard({
       >
         {pending ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
         {stale
-          ? (zh ? "过期推演不可采用" : "Stale forecast")
-          : (zh ? "采用此分支" : "Use this branch")}
+          ? (tr("过期推演不可采用", "Stale forecast", zh))
+          : (tr("采用此分支", "Use this branch", zh))}
       </button>
     </article>
   );
@@ -233,7 +230,7 @@ export function NarrativeForecastPreview({ exec, onSelectBranch, onRecheck }: Na
         <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
           {tr(
             `${details.branchId} 已写入候选计划；正文、大纲和正史状态没有修改。`,
-            `${details.branchId} was written to the candidate plan; prose, outline, and canon were not modified.`,
+            messageTemplate("{{0}} was written to the candidate plan; prose, outline, and canon were not modified.", details.branchId),
           )}
         </p>
         {details.stale && (
@@ -274,23 +271,23 @@ export function NarrativeForecastPreview({ exec, onSelectBranch, onRecheck }: Na
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-foreground">
                 <GitFork size={16} className="text-primary" />
-                {zh ? "剧情多线推演" : "Narrative forecast"}
+                {tr("剧情多线推演", "Narrative forecast", zh)}
               </span>
               <span className="rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-medium tracking-wide text-primary">
-                {zh ? "非正史规划" : "NON-CANONICAL"}
+                {tr("非正史规划", "NON-CANONICAL", zh)}
               </span>
               {stale && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-200">
                   <AlertTriangle size={11} />
-                  {zh ? "正史已变化" : "Canon changed"}
+                  {tr("正史已变化", "Canon changed", zh)}
                 </span>
               )}
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-foreground/85">{forecast.divergence}</p>
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-              <span>{zh ? `基于第 ${forecast.baseChapter} 章` : `After chapter ${forecast.baseChapter}`}</span>
-              <span>{zh ? `${forecast.branches.length} 条候选分支` : `${forecast.branches.length} branches`}</span>
-              <span>{zh ? `推演未来约 ${forecast.horizon} 章` : `~${forecast.horizon} chapters ahead`}</span>
+              <span>{tr(`基于第 ${forecast.baseChapter} 章`, messageTemplate("After chapter {{0}}", forecast.baseChapter), zh)}</span>
+              <span>{tr(`${forecast.branches.length} 条候选分支`, messageTemplate("{{0}} branches", forecast.branches.length), zh)}</span>
+              <span>{tr(`推演未来约 ${forecast.horizon} 章`, messageTemplate("~{{0}} chapters ahead", forecast.horizon), zh)}</span>
             </div>
           </div>
           {onRecheck && (
@@ -301,14 +298,14 @@ export function NarrativeForecastPreview({ exec, onSelectBranch, onRecheck }: Na
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground disabled:opacity-50"
             >
               <RefreshCw size={12} className={rechecking ? "animate-spin" : ""} />
-              {zh ? "重新核验" : "Recheck"}
+              {tr("重新核验", "Recheck", zh)}
             </button>
           )}
         </div>
         {stale && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/8 px-3 py-2 text-xs leading-5 text-amber-900 dark:text-amber-100">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-            <span>{zh ? "正史输入已在生成后变化。请重新推演，不要继续采用旧分支。" : "Canonical inputs changed after generation. Regenerate before selecting a branch."}</span>
+            <span>{tr("正史输入已在生成后变化。请重新推演，不要继续采用旧分支。", "Canonical inputs changed after generation. Regenerate before selecting a branch.", zh)}</span>
           </div>
         )}
       </header>

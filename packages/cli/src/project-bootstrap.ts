@@ -8,7 +8,7 @@ export interface ProjectBootstrapOptions {
   readonly overwriteSupportFiles?: boolean;
 }
 
-async function hasGlobalConfig(): Promise<boolean> {
+export async function hasGlobalConfig(): Promise<boolean> {
   try {
     const content = await readFile(GLOBAL_ENV_PATH, "utf-8");
     return content.includes("INKOS_LLM_API_KEY=") && !content.includes("your-api-key-here");

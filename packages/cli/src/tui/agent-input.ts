@@ -1,3 +1,4 @@
+import { formatRussian, messageTemplate, translateRussian } from "@actalk/inkos-core/localization/ru";
 import {
   ActionPayloadSchema,
   CreativeEpisodeStore,
@@ -54,13 +55,13 @@ export async function processTuiAgentInput(params: {
   );
   const userTimestamp = Date.now();
   const currentBookId = params.activeBookId ?? params.session.activeBookId ?? null;
-  const language = config.language === "en" ? "en" : "zh";
+  const language = config.language;
   const useWork = params.input.trim().match(/^\/use\s+([^\s]+)$/i)?.[1];
   const selectedWork = useWork ? await loadWorkManifest(params.projectRoot, useWork) : null;
   const localWorkResponse = selectedWork
-    ? (language === "en"
+    ? ((language === "ru" ? formatRussian(messageTemplate("Using Work \"{{0}}\" ({{1}}) with profile {{2}}.", selectedWork.title, selectedWork.id, selectedWork.profileId)) : (language === "en"
         ? `Using Work "${selectedWork.title}" (${selectedWork.id}) with profile ${selectedWork.profileId}.`
-        : `已切换到 Work「${selectedWork.title}」（${selectedWork.id}），Profile：${selectedWork.profileId}。`)
+        : `已切换到 Work「${selectedWork.title}」（${selectedWork.id}），Profile：${selectedWork.profileId}。`)))
     : await resolveLocalWorkCommand(params.projectRoot, params.input, language);
   const currentKind = params.session.sessionKind ?? (currentBookId ? "book" : "chat");
   const route = localWorkResponse
@@ -204,14 +205,14 @@ export async function processTuiAgentInput(params: {
 async function resolveLocalWorkCommand(
   projectRoot: string,
   rawInput: string,
-  language: "zh" | "en",
+  language: "zh" | "en" | "ru",
 ): Promise<string | undefined> {
   const input = rawInput.trim();
   if (/^\/works$/i.test(input)) {
     const works = await listWorkManifests(projectRoot);
-    if (works.length === 0) return language === "en" ? "No creative Works found." : "还没有创作 Work。";
+    if (works.length === 0) return (language === "ru" ? translateRussian("No creative Works found.") : (language === "en" ? "No creative Works found." : "还没有创作 Work。"));
     return [
-      language === "en" ? "Creative Works:" : "创作 Works：",
+      (language === "ru" ? translateRussian("Creative Works:") : (language === "en" ? "Creative Works:" : "创作 Works：")),
       ...works.map((work) => `- ${work.id} | ${work.profileId} | ${work.title} | ${work.artifacts.length} artifacts`),
     ].join("\n");
   }
@@ -223,9 +224,9 @@ async function resolveLocalWorkCommand(
     const recent = episodes.listEpisodes({ workId: work.id, limit: 10 });
     return [
       `${work.title} (${work.id})`,
-      `${language === "en" ? "Profile" : "类型"}: ${work.profileId}`,
-      `${language === "en" ? "Artifacts" : "生成物"}: ${work.artifacts.length}`,
-      `${language === "en" ? "Recent episodes" : "最近执行"}: ${recent.length}`,
+      `${(language === "ru" ? translateRussian("Profile") : (language === "en" ? "Profile" : "类型"))}: ${work.profileId}`,
+      `${(language === "ru" ? translateRussian("Artifacts") : (language === "en" ? "Artifacts" : "生成物"))}: ${work.artifacts.length}`,
+      `${(language === "ru" ? translateRussian("Recent episodes") : (language === "en" ? "Recent episodes" : "最近执行"))}: ${recent.length}`,
       ...recent.map((episode) => `- ${episode.status} | ${episode.startedAt}`),
     ].join("\n");
   } finally {
@@ -237,7 +238,7 @@ export function resolveTuiAgentRoute(
   rawInput: string,
   session: InteractionSession,
   activeBookId: string | null,
-  language: "zh" | "en" = "zh",
+  language: "zh" | "en" | "ru" = "zh",
 ): TuiAgentRoute {
   const input = rawInput.trim();
   const currentKind = session.sessionKind ?? (activeBookId ? "book" : "chat");
@@ -245,7 +246,7 @@ export function resolveTuiAgentRoute(
   if (/^\/confirm$/i.test(input)) {
     const pending = session.pendingProposedAction;
     if (!pending) {
-      return localConfirmationRoute(currentKind, input, language === "en" ? "There is no pending action." : "没有待确认的动作。");
+      return localConfirmationRoute(currentKind, input, (language === "ru" ? translateRussian("There is no pending action.") : (language === "en" ? "There is no pending action." : "没有待确认的动作。")));
     }
     const requestedIntent = RequestedIntentSchema.safeParse(pending.action);
     const actionPayload = pending.actionPayload === undefined
@@ -255,9 +256,9 @@ export function resolveTuiAgentRoute(
       return localConfirmationRoute(
         currentKind,
         input,
-        language === "en"
+        (language === "ru" ? translateRussian("This pending action is no longer valid. Please propose it again.") : (language === "en"
           ? "This pending action is no longer valid. Please propose it again."
-          : "这条待确认动作已失效，请重新提出需求。",
+          : "这条待确认动作已失效，请重新提出需求。")),
       );
     }
     return {
@@ -278,46 +279,46 @@ export function resolveTuiAgentRoute(
       currentKind,
       input,
       session.pendingProposedAction
-        ? language === "en" ? "Pending action cancelled." : "已取消待确认动作。"
-        : language === "en" ? "There is no pending action." : "没有待确认的动作。",
+        ? (language === "ru" ? translateRussian("Pending action cancelled.") : (language === "en" ? "Pending action cancelled." : "已取消待确认动作。"))
+        : (language === "ru" ? translateRussian("There is no pending action.") : (language === "en" ? "There is no pending action." : "没有待确认的动作。")),
     );
   }
 
   const newMatch = input.match(/^\/new(?:\s+([\s\S]+))?$/i);
   if (newMatch) {
-    return entryRoute("book-create", commandBody(newMatch[1], language === "en"
+    return entryRoute("book-create", commandBody(newMatch[1], (language === "ru" ? translateRussian("I want to create a new book. Confirm the direction with me first.") : (language === "en"
       ? "I want to create a new book. Confirm the direction with me first."
-      : "我想创建一本新书，请先和我确认方向。"));
+      : "我想创建一本新书，请先和我确认方向。"))));
   }
 
   const shortMatch = input.match(/^\/short(?:\s+([\s\S]+))?$/i);
   if (shortMatch) {
-    return entryRoute("short", commandBody(shortMatch[1], language === "en"
+    return entryRoute("short", commandBody(shortMatch[1], (language === "ru" ? translateRussian("I want to create an InkOS Short. Confirm the direction with me first.") : (language === "en"
       ? "I want to create an InkOS Short. Confirm the direction with me first."
-      : "我想做 InkOS Short，请先和我确认方向。"));
+      : "我想做 InkOS Short，请先和我确认方向。"))));
   }
 
   const coverMatch = input.match(/^\/cover(?:\s+([\s\S]+))?$/i);
   if (coverMatch) {
-    return entryRoute("short", commandBody(coverMatch[1], language === "en"
+    return entryRoute("short", commandBody(coverMatch[1], (language === "ru" ? translateRussian("I want to create or redo a cover. Confirm the target with me first.") : (language === "en"
       ? "I want to create or redo a cover. Confirm the target with me first."
-      : "我想生成或重做封面，请先和我确认目标。"));
+      : "我想生成或重做封面，请先和我确认目标。"))));
   }
 
   const playMatch = input.match(/^\/play(?:\s+(open|guided))?(?:\s+([\s\S]+))?$/i);
   if (playMatch) {
     const playMode = playMatch[1]?.toLowerCase() as PlayMode | undefined;
     return {
-      ...entryRoute("play", commandBody(playMatch[2], language === "en"
+      ...entryRoute("play", commandBody(playMatch[2], (language === "ru" ? translateRussian("I want to start an interactive world. Confirm the opening with me first.") : (language === "en"
         ? "I want to start an interactive world. Confirm the opening with me first."
-        : "我想启动互动世界，请先和我确认开局。")),
+        : "我想启动互动世界，请先和我确认开局。")))),
       ...(playMode ? { playMode } : {}),
     };
   }
 
   if (/^\/write$/i.test(input)) {
     return {
-      userMessage: language === "en" ? "Write the next chapter" : "写下一章",
+      userMessage: (language === "ru" ? translateRussian("Write the next chapter") : (language === "en" ? "Write the next chapter" : "写下一章")),
       sessionKind: activeBookId ? "book" : currentKind,
       actionSource: "slash",
       requestedIntent: "write_next",
@@ -393,7 +394,8 @@ function extractProposedAction(messages: ReadonlyArray<unknown>): PendingPropose
   return undefined;
 }
 
-function formatProposedAction(action: PendingProposedAction, language: "zh" | "en"): string {
+function formatProposedAction(action: PendingProposedAction, language: "zh" | "en" | "ru"): string {
+  if (language === "ru") return [action.title ?? "Подтвердить действие", action.summary ?? "Подтвердите, чтобы продолжить.", "", action.instruction, "", "Введите /confirm для продолжения или /cancel для отмены."].join("\n");
   return language === "en"
     ? [action.title ?? "Confirm action", action.summary ?? "Confirm to continue.", "", action.instruction, "", "Type /confirm to continue, or /cancel to cancel."].join("\n")
     : [action.title ?? "确认执行", action.summary ?? "确认后继续执行。", "", action.instruction, "", "输入 /confirm 继续，或 /cancel 取消。"].join("\n");

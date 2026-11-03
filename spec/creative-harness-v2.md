@@ -1,74 +1,41 @@
-# InkOS 2.0 creative workflow contracts
+# Контракты творческого процесса InkOS 2.0
 
-## Work and execution identity
+## Идентичность произведения и выполнения
 
-Studio, CLI, and agent tools operate on a canonical Work under `works/<id>/`.
-`work.json` records its profile and registered artifacts; `source/` contains its
-working files. Sessions bind to the created Work before subsequent production
-or recovery. A conversation finishing is not evidence that its deliverables
-have been produced.
+Studio, CLI и инструменты агента работают с каноническим произведением Work в `works/<id>/`. `work.json` содержит профиль и зарегистрированные материалы; рабочие файлы находятся в `source/`. Сеанс привязывается к созданному Work до последующих производственных операций или восстановления. Завершение разговора не доказывает, что заказанные материалы созданы.
 
-Actions return structured execution status, artifact revisions, observations,
-and recovery information. The main agent and delegated workers receive the
-original author request. Specialized creative methods live in the applicable
-Skills; they do not replace the author's requested scope.
+Действия возвращают структурированный статус выполнения, версии материалов, наблюдения и сведения о восстановлении. Главный агент и назначенные исполнители получают исходный запрос автора. Профессиональные методы находятся в применимых навыках и не отменяют границы авторского запроса.
 
-## Artifacts, edits, and recovery
+## Материалы, правки и восстановление
 
-- Read, review, and export resolve registered artifact versions and verify their
-  checksums. A missing artifact returns a recoverable, typed lookup error.
-- Review-and-export fixes one version for both operations. Content findings and
-  successful execution are separate results.
-- Local revisions preserve content outside the author's permitted range. The
-  request's original baseline remains available across retries for comparison.
-- Atomic file sets journal multi-file writes. Interrupted operations can recover
-  without treating an unfinished candidate as an accepted version.
-- Filesystem discovery, pending writes, acceptance scopes, and image receipts
-  use the same `/`-separated artifact identity on all platforms. One native path
-  and its registered path must not create competing updates to one artifact.
-- Short-fiction revision checkpoints carry a stable operation identity and
-  completed chapter progress. A changed instruction cannot silently reset that
-  operation; source changes are detected before resuming.
-- Derivative works retain registered source-version references. Source selection
-  and confirmation preserve the requested output constraints.
+- Чтение, проверка и экспорт находят зарегистрированную версию и сверяют контрольную сумму. Отсутствующий материал возвращает типизированную ошибку поиска, допускающую восстановление.
+- Совмещённая проверка и экспорт фиксируют одну версию для обеих операций. Замечания к содержанию и успешное выполнение возвращаются отдельно.
+- Локальная правка сохраняет содержание вне разрешённого автором диапазона. Исходная база запроса остаётся доступна для сравнения между повторными попытками.
+- Атомарные наборы файлов журналируют запись нескольких файлов. Прерванная операция восстанавливается без признания незавершённого кандидата принятой версией.
+- Поиск в файловой системе, ожидающие записи, границы принятия и квитанции изображений используют одинаковую идентичность материала с разделителем `/` на всех платформах. Системный путь и зарегистрированный путь одного файла не должны создавать конкурирующие обновления.
+- Контрольная точка правки рассказа сохраняет стабильную идентичность операции и прогресс завершённых глав. Изменённая инструкция не может незаметно сбросить операцию; до возобновления проверяются изменения источника.
+- Производные произведения сохраняют зарегистрированные ссылки на исходную версию. Выбор источника и подтверждение сохраняют ограничения заказанного результата.
 
-## Interactive and visual output
+## Интерактивные и визуальные результаты
 
-World state, events, choices, and scene presentation are persisted together at
-their domain boundaries. Prose-only scene revisions preserve world state and
-choices. Player actions retain the actual player input; bounded context includes
-earlier narrative evidence as well as the current state. Interactive-film edits
-receive the complete graph's authoring context while keeping write scope bounded.
+Состояние мира, события, варианты выбора и представление сцены сохраняются вместе на соответствующих границах предметной области. Правка только текста сцены сохраняет состояние мира и выборы. Действия игрока сохраняют его фактический ввод; ограниченный контекст включает прежние повествовательные свидетельства и текущее состояние. Правка интерактивного фильма получает авторский контекст полного графа, сохраняя ограниченную область записи.
 
-Image revisions can send the previous image as a provider reference. Image
-generation waits outside the Work mutation lock, then commits against its
-captured moment. A failed replacement retains the previous successful image.
-Provider credentials are only retried for image downloads on that provider's
-own origin.
+При изменении изображения предыдущее изображение может передаваться провайдеру как образец. Ожидание генерации происходит вне блокировки изменения Work; затем результат сохраняется относительно зафиксированного момента. Неудачная замена сохраняет предыдущее успешное изображение. Повторная передача учётных данных при скачивании изображения разрешена только на собственный источник провайдера.
 
-## Compatibility
+## Совместимость
 
-Node.js 22.16.0 or later is required. Core, Studio, and CLI package versions are
-aligned at 2.0.0. Legacy migration is available through `inkos work migrate`;
-preview before applying with `--apply`. Migration preserves legacy source files
-and reports conflicts rather than overwriting them.
+Требуется Node.js 22.16.0 или новее. Версии пакетов Core, Studio и CLI согласованы на 2.0.0. Миграция старых проектов доступна через `inkos work migrate`; сначала просмотрите результат, затем отдельно применяйте `--apply`. Миграция сохраняет старые исходные файлы и сообщает о конфликтах вместо их перезаписи.
 
-## Verification recorded on 2026-09-25
+## Проверка, зафиксированная исходным проектом 25 сентября 2026 года
 
-The frozen `delivery-verification-2026-09-25` candidate has source digest
-`7fe5443820cf7e566c68765ce9f3d86ca6820c76d7fdb5b5874d52d011456232`.
-Its 758 source files match implementation commit `7e60e13`. Subsequent Windows
-integration fixes normalize artifact identities before deduplication and scope
-checks, and close cached test sessions before deleting their temporary projects.
-The frozen candidate remains unchanged; its real-model evidence describes that
-baseline, while GitHub CI checks the current integration commit.
+Замороженный кандидат `delivery-verification-2026-09-25` имеет контрольную сумму исходников `7fe5443820cf7e566c68765ce9f3d86ca6820c76d7fdb5b5874d52d011456232`. Его 758 исходных файлов соответствуют коммиту реализации `7e60e13`. Последующие исправления интеграции с Windows нормализуют идентичность материалов перед устранением дублей и проверкой границ; кешированные тестовые сеансы закрываются до удаления временных проектов.
 
-- Node 22 and Node 24 each passed 1,093 checks: Core 701, Studio 304, CLI 88.
-- Fresh installation matched all 1,779 packaged production files.
-- Configured migration preserved the legacy files and chapter content.
+Замороженный кандидат не меняется. Проверки с реальными моделями относятся к этой базе; GitHub CI проверяет текущий интеграционный коммит.
 
-Full real-model acceptance for all 13 creative types on this same frozen
-candidate remains in progress. Earlier candidates' completed journeys do not
-count as this candidate's acceptance. Content, cover, and market acceptance
-remain separate from the engineering checks above. Merging this implementation
-does not assert that stable-release acceptance has completed.
+- На Node 22 и Node 24 прошло по 1 093 проверки: Core 701, Studio 304, CLI 88.
+- Чистая установка совпала по всем 1 779 упакованным производственным файлам.
+- Миграция настроенного проекта сохранила старые файлы и тексты глав.
+
+Полная приёмка всех 13 творческих типов с реальными моделями на том же кандидате ещё выполнялась. Завершённые сценарии предыдущих кандидатов не засчитываются как его приёмка. Приёмка содержания, обложек и рыночной пригодности отделена от инженерных проверок. Слияние реализации не означает завершения приёмки стабильного выпуска.
+
+Это историческая запись исходного проекта. Она не является отчётом о проверке русской адаптации от 3 ноября 2026 года.

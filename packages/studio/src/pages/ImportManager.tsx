@@ -177,12 +177,12 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
     setLoading(false);
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "chapters", label: t("import.chapters"), icon: <FileInput size={14} /> },
-    { id: "canon", label: t("import.canon"), icon: <BookCopy size={14} /> },
-    { id: "fanfic", label: t("import.fanfic"), icon: <Feather size={14} /> },
-    { id: "spinoff", label: t("import.spinoff"), icon: <BookMarked size={14} /> },
-    { id: "imitation", label: t("import.imitation"), icon: <Wand2 size={14} /> },
+  const tabs: { id: Tab; label: string; title: string; icon: React.ReactNode }[] = [
+    { id: "chapters", label: lang === "ru" ? tr("章节", "Chapters") : t("import.chapters"), title: t("import.chapters"), icon: <FileInput size={14} /> },
+    { id: "canon", label: lang === "ru" ? tr("母本", "Canon") : t("import.canon"), title: t("import.canon"), icon: <BookCopy size={14} /> },
+    { id: "fanfic", label: t("import.fanfic"), title: t("import.fanfic"), icon: <Feather size={14} /> },
+    { id: "spinoff", label: lang === "ru" ? tr("番外", "Spin-off") : t("import.spinoff"), title: t("import.spinoff"), icon: <BookMarked size={14} /> },
+    { id: "imitation", label: t("import.imitation"), title: t("import.imitation"), icon: <Wand2 size={14} /> },
   ];
 
   return (
@@ -199,12 +199,13 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
       </h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-secondary/30 rounded-lg p-1 w-fit">
+      <div className="flex max-w-full flex-wrap gap-1 bg-secondary/30 rounded-lg p-1 w-fit">
         {tabs.map((tb) => (
           <button
             key={tb.id}
+            title={tb.title}
             onClick={() => { setTab(tb.id); setStatus(null); }}
-            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${
+            className={`${lang === "ru" ? "px-3" : "px-4"} py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${
               tab === tb.id ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -293,9 +294,9 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
               placeholder={t("import.fanficTitle")}
               className="w-full px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm"
             />
-            <div className="grid grid-cols-3 gap-3">
+            <div className={`grid ${lang === "ru" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-3"} gap-3`}>
               <select value={ffMode} onChange={(e) => setFfMode(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm">
+                className={`${lang === "ru" ? "lg:col-span-2" : ""} px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm`}>
                 <option value="canon">{tr("原著向", "Canon-compliant")}</option>
                 <option value="au">{tr("架空 AU", "Alternate Universe (AU)")}</option>
                 <option value="ooc">{tr("性格偏离 OOC", "Out of Character (OOC)")}</option>
@@ -308,10 +309,11 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
                 <option value="urban">{tr("都市", "Urban")}</option>
                 <option value="xianxia">{tr("仙侠", "Xianxia")}</option>
               </select>
-              <select value={ffLang} onChange={(e) => setFfLang(e.target.value as "zh" | "en")}
+              <select value={ffLang} onChange={(e) => setFfLang(e.target.value as "zh" | "en" | "ru")}
                 className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm">
                 <option value="zh">{tr("中文", "Chinese")}</option>
-                <option value="en">English</option>
+                <option value="en">{tr("英语", "English")}</option>
+                <option value="ru">Русский</option>
               </select>
             </div>
             <textarea value={ffText} onChange={(e) => setFfText(e.target.value)} rows={10}
@@ -355,7 +357,7 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
               placeholder={t("import.imitationTitle")}
               className="w-full px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm"
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid ${lang === "ru" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-2"} gap-3`}>
               <select value={imGenre} onChange={(e) => setImGenre(e.target.value)}
                 className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm">
                 <option value="other">{tr("其他", "Other")}</option>
@@ -363,10 +365,11 @@ export function ImportManager({ nav, theme, t, initialTab }: { nav: Nav; theme: 
                 <option value="urban">{tr("都市", "Urban")}</option>
                 <option value="xianxia">{tr("仙侠", "Xianxia")}</option>
               </select>
-              <select value={imLang} onChange={(e) => setImLang(e.target.value as "zh" | "en")}
+              <select value={imLang} onChange={(e) => setImLang(e.target.value as "zh" | "en" | "ru")}
                 className="px-3 py-2 rounded-lg bg-secondary/30 border border-border text-sm">
                 <option value="zh">{tr("中文", "Chinese")}</option>
-                <option value="en">English</option>
+                <option value="en">{tr("英语", "English")}</option>
+                <option value="ru">Русский</option>
               </select>
             </div>
             <textarea value={imIdea} onChange={(e) => setImIdea(e.target.value)} rows={4}

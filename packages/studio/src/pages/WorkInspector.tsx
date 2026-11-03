@@ -152,7 +152,7 @@ export function WorkInspector({ workId, onBack, onChat }: {
             >
               <div className="min-w-0">
                 <div className="font-medium">{revision?.path ?? artifact.id}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{artifact.kind} · {artifact.revisions.length} revision(s) · {revision?.status}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{artifact.kind} · {artifact.revisions.length}{tr("revision(s) ·", "revision(s) ·")}{revision?.status}</div>
               </div>
               <GitCommitHorizontal size={18} className="shrink-0 text-muted-foreground" />
             </button>

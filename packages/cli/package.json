@@ -32,7 +32,7 @@
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Narcooo/inkos.git",
+    "url": "https://github.com/kirillgotovtsev/InkOS-rus.git",
     "directory": "packages/cli"
   },
   "scripts": {
@@ -76,5 +76,6 @@
   },
   "engines": {
     "node": ">=22.16.0"
-  }
+  },
+  "homepage": "https://github.com/kirillgotovtsev/InkOS-rus#readme"
 }

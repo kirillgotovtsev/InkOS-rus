@@ -1,3 +1,4 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
 import { useApi } from "../../hooks/use-api";
 import { useColors } from "../../hooks/use-colors";
 import { tr } from "../../lib/app-language";
@@ -92,7 +93,7 @@ function PathDistributionPanel({
 
       {distribution.truncated && (
         <div className={`text-xs mb-2 ${c.muted}`}>
-          {tr(`路径过多，仅统计前 ${distribution.total} 条`, `Too many paths; only the first ${distribution.total} are counted`)}
+          {tr(`路径过多，仅统计前 ${distribution.total} 条`, messageTemplate("Too many paths; only the first {{0}} are counted", distribution.total))}
         </div>
       )}
 
@@ -139,7 +140,7 @@ function PathDistributionPanel({
                   <div
                     className="w-full bg-primary/50 rounded-t"
                     style={{ height: `${heightPct}%` }}
-                    title={tr(`长度 ${len}: ${count} 条`, `Length ${len}: ${count} paths`)}
+                    title={tr(`长度 ${len}: ${count} 条`, messageTemplate("Length {{0}}: {{1}} paths", len, count))}
                   />
                   <span className={`text-xs leading-none ${c.muted}`}>{len}</span>
                 </div>

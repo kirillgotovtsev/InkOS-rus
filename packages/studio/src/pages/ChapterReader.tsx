@@ -1,3 +1,4 @@
+import { tr } from "../lib/app-language";
 import { useState } from "react";
 import { fetchJson, useApi } from "../hooks/use-api";
 import type { Theme } from "../hooks/use-theme";
@@ -82,7 +83,7 @@ export function ChapterReader({ bookId, chapterNumber, nav, theme, t }: {
     </div>
   );
 
-  if (error) return <div className="text-destructive p-8 bg-destructive/5 rounded-xl border border-destructive/20">Error: {error}</div>;
+  if (error) return <div className="text-destructive p-8 bg-destructive/5 rounded-xl border border-destructive/20">{tr("Error:", "Error:")}{error}</div>;
   if (!data) return null;
 
   // Split markdown content into title and body

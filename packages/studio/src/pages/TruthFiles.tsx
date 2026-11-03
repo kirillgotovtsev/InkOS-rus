@@ -1,3 +1,4 @@
+import { tr } from "../lib/app-language";
 import { fetchJson, useApi } from "../hooks/use-api";
 import { useState } from "react";
 import type { Theme } from "../hooks/use-theme";
@@ -121,10 +122,8 @@ export function TruthFiles({ bookId, nav, theme, t }: { bookId: string; nav: Nav
                   data-testid="runtime-diagnostic-warning"
                   className="mb-3 px-3 py-2 rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 text-xs leading-relaxed"
                 >
-                  <div className="font-medium">运行时诊断文件 / Runtime diagnostic</div>
-                  <div className="mt-1">
-                    这里展示本章写作时的上下文选择、保护层、可压缩层和预算 trace。它只用于追溯系统看了什么，不作为可编辑设定。
-                  </div>
+                  <div className="font-medium">{tr("运行时诊断文件 / Runtime diagnostic", "Runtime diagnostic")}</div>
+                  <div className="mt-1">{tr("这里展示本章写作时的上下文选择、保护层、可压缩层和预算 trace。它只用于追溯系统看了什么，不作为可编辑设定。", "This shows context selection, protected and compressible layers, and the budget trace used for this chapter. It records what the system read and is not editable story canon.")}</div>
                 </div>
               )}
               <div className="flex items-center justify-end gap-2 mb-3">
@@ -134,9 +133,7 @@ export function TruthFiles({ bookId, nav, theme, t }: { bookId: string; nav: Nav
                       onClick={cancelEdit}
                       className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md ${c.btnSecondary}`}
                     >
-                      <X size={14} />
-                      Cancel
-                    </button>
+                      <X size={14} />{tr("Cancel", "Cancel")}</button>
                     <button
                       onClick={handleSaveEdit}
                       disabled={savingEdit}
@@ -152,9 +149,7 @@ export function TruthFiles({ bookId, nav, theme, t }: { bookId: string; nav: Nav
                       onClick={startEdit}
                       className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs rounded-md ${c.btnSecondary}`}
                     >
-                      <Pencil size={14} />
-                      Edit
-                    </button>
+                      <Pencil size={14} />{tr("Edit", "Edit")}</button>
                   )
                 )}
               </div>

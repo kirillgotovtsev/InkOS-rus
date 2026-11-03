@@ -1,3 +1,5 @@
+import { messageTemplate } from "@actalk/inkos-core/localization/ru";
+import { tr } from "../../lib/app-language";
 import { useEffect, useState } from "react";
 import { fetchJson } from "../../hooks/use-api";
 import { useChatStore } from "../../store/chat";
@@ -27,10 +29,10 @@ export function ChaptersSection({ bookId, isZh }: ChaptersSectionProps) {
   }, [bookId, bookDataVersion]);
 
   return (
-    <SidebarCard title={isZh ? "章节" : "Chapters"}>
+    <SidebarCard title={tr("章节", "Chapters", isZh)}>
       {chapters.length === 0 ? (
         <p className="text-[15px] leading-6 text-muted-foreground/50 italic">
-          {isZh ? "暂无章节" : "No chapters"}
+          {tr("暂无章节", "No chapters", isZh)}
         </p>
       ) : (
         <ul className="space-y-1 max-h-52 overflow-y-auto overflow-x-hidden">
@@ -41,11 +43,12 @@ export function ChaptersSection({ bookId, isZh }: ChaptersSectionProps) {
             return (
               <li
                 key={`${ch.number}-${ch.title ?? ""}`}
+                title={ch.title || tr(`第${ch.number}章`, messageTemplate("Chapter {{0}}", ch.number), isZh)}
                 onClick={() => useChatStore.getState().openChapterArtifact(ch.number)}
                 className="flex items-center gap-2 py-1 text-[15px] leading-6 text-muted-foreground cursor-pointer hover:text-foreground transition-colors rounded px-1 -mx-1 hover:bg-secondary/50">
                 <span className={cn("text-[13px] shrink-0", ind.color)}>{ind.symbol}</span>
                 <span className="truncate flex-1">
-                  {String(ch.number).padStart(2, "0")} {ch.title || (isZh ? `第${ch.number}章` : `Chapter ${ch.number}`)}
+                  {String(ch.number).padStart(2, "0")} {ch.title || (tr(`第${ch.number}章`, messageTemplate("Chapter {{0}}", ch.number), isZh))}
                 </span>
                 <span className="tabular-nums text-[13px] text-muted-foreground/50 shrink-0">
                   {(ch.wordCount ?? 0).toLocaleString()}
