@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -76,5 +76,18 @@ describe("material retrieval", () => {
 
     expect(results.map((result) => result.purpose)).toEqual(["script"]);
     expect(results[0]?.excerpt).toContain("分镜");
+  });
+
+  it("finds a passage near the end of a large PDF paragraph without returning the whole source", async () => {
+    const text = `${"Нейтральная строка из вымышленного документа.\n".repeat(12_000)}В конце найдена бирюзоваяквитанция.`;
+    await writeFile(join(root, "fixture.txt"), text);
+    const asset = await ingestMaterial(root, { sourceKind: "file", filePath: "fixture.txt", purpose: "reference" });
+
+    const [result] = await retrieveMaterials(root, { query: "бирюзоваяквитанция", limit: 1 });
+    expect(result?.excerpt).toContain("бирюзоваяквитанция");
+    expect(result!.excerpt.length).toBeLessThanOrEqual(8_000);
+    const source = await readFile(join(root, asset.markdownPath), "utf8");
+    expect(source.slice(result!.charStart, result!.charEnd)).toBe(result!.excerpt);
+    expect(source).toContain(text);
   });
 });

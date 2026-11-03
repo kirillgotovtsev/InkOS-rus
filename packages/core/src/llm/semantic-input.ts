@@ -38,23 +38,25 @@ export function splitTextByEstimatedTokens(text: string, budgetTokens: number): 
 }
 
 function splitOversizedUnit(text: string, budgetTokens: number): string[] {
-  const chars = Array.from(text);
   const chunks: string[] = [];
   let start = 0;
-  while (start < chars.length) {
-    let low = start + 1;
-    let high = chars.length;
-    let end = low;
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      if (estimateTextTokens(chars.slice(start, mid).join("")) <= budgetTokens) {
-        end = mid;
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
+  while (start < text.length) {
+    let end = start;
+    let units = 0;
+    // Match estimateTextTokens: a CJK code unit costs one token, other
+    // UTF-16 units cost one quarter. Walk once instead of repeatedly copying
+    // multi-megabyte character arrays during binary search.
+    while (end < text.length) {
+      const code = text.charCodeAt(end);
+      const paired = code >= 0xD800 && code <= 0xDBFF
+        && text.charCodeAt(end + 1) >= 0xDC00 && text.charCodeAt(end + 1) <= 0xDFFF;
+      const width = paired ? 2 : 1;
+      const cost = code >= 0x3400 && code <= 0x9FFF ? 4 : width;
+      if (end > start && units + cost > budgetTokens * 4) break;
+      units += cost;
+      end += width;
     }
-    chunks.push(chars.slice(start, end).join(""));
+    chunks.push(text.slice(start, end));
     start = end;
   }
   return chunks;

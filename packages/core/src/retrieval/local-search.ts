@@ -199,6 +199,7 @@ export class LocalSearchIndex {
 }
 
 export function splitMarkdownForSearch(markdown: string): MarkdownSearchSegment[] {
+  const maxSegmentChars = 8_000;
   const segments: MarkdownSearchSegment[] = [];
   let heading = "";
   const blockPattern = /(?:^|\n)([^\n](?:[\s\S]*?))(?=\n\s*\n|$)/g;
@@ -213,12 +214,24 @@ export function splitMarkdownForSearch(markdown: string): MarkdownSearchSegment[
       heading = headingMatch[1]?.trim() ?? heading;
       continue;
     }
-    segments.push({
-      heading,
-      body,
-      charStart,
-      charEnd: charStart + raw.length,
-    });
+    // Extracted PDFs can contain a whole book without blank paragraphs.
+    // Index bounded, contiguous passages, retaining exact source offsets.
+    if (body.length <= maxSegmentChars) {
+      segments.push({ heading, body, charStart, charEnd: charStart + raw.length });
+      continue;
+    }
+    const bodyStart = charStart + raw.indexOf(body);
+    for (let start = 0; start < body.length;) {
+      let end = Math.min(start + maxSegmentChars, body.length);
+      if (end < body.length) {
+        const boundary = Math.max(body.lastIndexOf("\n", end - 1), body.lastIndexOf(" ", end - 1));
+        if (boundary >= start + maxSegmentChars / 2) end = boundary + 1;
+        // Do not split an astral character's UTF-16 surrogate pair.
+        if (/[\uD800-\uDBFF]/.test(body[end - 1]!)) end -= 1;
+      }
+      segments.push({ heading, body: body.slice(start, end), charStart: bodyStart + start, charEnd: bodyStart + end });
+      start = end;
+    }
   }
   return segments;
 }

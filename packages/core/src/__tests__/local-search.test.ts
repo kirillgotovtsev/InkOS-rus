@@ -100,4 +100,19 @@ describe("LocalSearchIndex", () => {
     expect(markdown.slice(segments[1]!.charStart, segments[1]!.charEnd)).toBe("司机拒绝签字。");
     expect(tokenizeSearchText("师债 mentor-debt")).toEqual(expect.arrayContaining(["师债", "mentor-debt"]));
   });
+
+  it("bounds an extracted PDF paragraph while preserving every character and source offset", () => {
+    const body = "Русская строка из PDF, без пустых абзацев. 🐈\n".repeat(12_000);
+    const markdown = `# Источник\n\n${body}`;
+    const segments = splitMarkdownForSearch(markdown);
+
+    expect(segments.length).toBeGreaterThan(50);
+    expect(segments.map(segment => segment.body).join("")).toBe(body.trim());
+    for (const segment of segments) {
+      expect(segment.body.length).toBeLessThanOrEqual(8_000);
+      expect(segment.heading).toBe("Источник");
+      expect(markdown.slice(segment.charStart, segment.charEnd)).toBe(segment.body);
+      expect(segment.body).not.toMatch(/^[\uDC00-\uDFFF]|[\uD800-\uDBFF]$/);
+    }
+  });
 });

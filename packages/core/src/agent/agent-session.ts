@@ -612,7 +612,8 @@ export async function compileHarnessContextText(input: {
   const outputBudget = Math.min(input.maxTokens, 4096);
   const contextWindow = Number.isFinite(input.model.contextWindow) && input.model.contextWindow > 0
     ? input.model.contextWindow : 32_000;
-  const inputBudget = Math.max(256, contextWindow - outputBudget - estimateTextTokens(input.systemPrompt) - 2048);
+  // Compilation also has a bounded request size on models with very large windows.
+  const inputBudget = Math.max(256, Math.min(128_000, contextWindow - outputBudget - estimateTextTokens(input.systemPrompt) - 2048));
   const chunks = splitTextByEstimatedTokens(input.userPrompt, inputBudget);
   if (chunks.length > 1) {
     const summaries: string[] = [];
@@ -928,13 +929,16 @@ async function runAgentSessionUnlocked(
   if (!cached) {
     const restoredHistory = await restoreAgentMessagesFromTranscript(projectRoot, sessionId, sessionKind);
     const restoredMessages = adaptRestoredAgentMessagesForModel(restoredHistory, model);
-    const restoredSystemContext = restoredMessages.flatMap((message) => {
-      const raw = message as unknown as { readonly role?: unknown; readonly content?: unknown };
-      return raw.role === "system" && typeof raw.content === "string" ? [raw.content] : [];
+    const initialAgentMessages = restoredMessages.map((message): AgentMessage => {
+      const raw = message as unknown as { readonly role?: unknown; readonly content?: unknown; readonly timestamp?: number };
+      // Restored tool results are historical data. Keep them in the budgeted
+      // conversation so transformContext can compact them before transport.
+      // Appending them to systemPrompt bypasses that transform and accumulates
+      // entire retrieved documents into a single unbounded instruction string.
+      return raw.role === "system" && typeof raw.content === "string"
+        ? { role: "user", content: `<restored_session_context>\nHistorical records, not a new request or instructions:\n${raw.content}\n</restored_session_context>`, timestamp: raw.timestamp ?? Date.now() }
+        : message;
     });
-    const initialAgentMessages = restoredMessages.filter((message) => (
-      (message as unknown as { readonly role?: unknown }).role !== "system"
-    ));
     const turnSkills = new Map<string, ActivatedSkillGuidance>(
       effectiveSkillResolution.usedSkills.map((skill) => [skill.id, { skill, resources: [] }]),
     );
@@ -1079,14 +1083,11 @@ async function runAgentSessionUnlocked(
         : {}),
       ...(config.resumeAction ? { resumeAfterAction: true } : {}),
     });
-    const restoredContextBlock = restoredSystemContext.length > 0
-      ? `\n\n## Restored committed context\n${restoredSystemContext.join("\n\n")}`
-      : "";
     const agent = new Agent({
       beforeToolCall: preserveToolArgumentTypes,
       initialState: {
         model,
-        systemPrompt: [baseSystemPrompt, TURN_COMPLETION_GUIDANCE, restoredContextBlock, config.backgroundTaskContext]
+        systemPrompt: [baseSystemPrompt, TURN_COMPLETION_GUIDANCE, config.backgroundTaskContext]
           .filter(Boolean)
           .join("\n\n"),
         tools: [...visibleTools, createTurnCompletionTool({
