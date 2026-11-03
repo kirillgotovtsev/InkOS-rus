@@ -227,6 +227,38 @@ it('bounds context compilation to one text response even if the model returns a 
   }finally{server.closeAllConnections();await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
 },15000);
 
+it('reserves a usable Responses output allowance for every compilation chunk and the final notes', async () => {
+  const requests: Array<{ max_output_tokens: number; tool_choice: string }> = [];
+  const server = createServer(async (request, response) => {
+    let body = ''; for await (const chunk of request) body += chunk;
+    requests.push(JSON.parse(body));
+    response.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    const send = (value: { type: string; [key: string]: unknown }) => response.write(`event: ${value.type}\ndata: ${JSON.stringify(value)}\n\n`);
+    const text = 'Notes preserve fixture.md; analysis remains pending.';
+    const item = { type: 'message', id: 'summary', role: 'assistant', content: [{ type: 'output_text', text, annotations: [] }] };
+    if (requests.at(-1)!.max_output_tokens >= 1024) {
+      send({ type: 'response.created', response: { id: 'resp_notes' } });
+      send({ type: 'response.output_item.added', output_index: 0, item: { ...item, content: [] } });
+      send({ type: 'response.content_part.added', output_index: 0, content_index: 0, part: { type: 'output_text', text: '', annotations: [] } });
+      send({ type: 'response.output_text.delta', output_index: 0, content_index: 0, delta: text });
+      send({ type: 'response.output_item.done', output_index: 0, item });
+    }
+    send({ type: 'response.completed', response: { id: 'resp_notes', status: 'completed', usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } } });
+    response.end('data: [DONE]\n\n');
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const client = createLLMClient({ service: 'custom', configSource: 'studio', provider: 'openai', model: 'fixture', apiKey: 'fixture', baseUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`, apiFormat: 'responses', stream: true, temperature: 0, thinkingBudget: 0 });
+    const notes = await compileHarnessContextText({ model: { ...client._piModel!, contextWindow: 32_000, maxTokens: 16_384 }, apiKey: 'fixture', stream: true, systemPrompt: 'Summarize historical records only.', userPrompt: 'Earlier fixture material. '.repeat(10_000), maxTokens: 512 });
+    expect(notes).toContain('analysis remains pending');
+    expect(requests.length).toBeGreaterThan(2);
+    expect(requests.every(request => request.max_output_tokens === 8192 && request.tool_choice === 'none')).toBe(true);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+}, 30_000);
+
 it('recovers an empty source selection with its address and materializes exact source punctuation', async () => {
   const { SourcedReviewToolSchema } = await import('../agents/review-tool.js');
   const { numberReviewSource, resolveObservationSources } = await import('../models/observation.js');

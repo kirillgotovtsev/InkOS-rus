@@ -875,6 +875,28 @@ describe("session transcript restore", () => {
     expect(body).not.toContain("\"toolResult\"");
   });
 
+  it("references repeated large material excerpts without losing queries, source locations, or transcript data", () => {
+    const excerpt = "Synthetic source paragraph. ".repeat(1_000);
+    const messages = Array.from({ length: 26 }, (_, index) => {
+      const result = { id: "fixture", title: "Fixture", markdownPath: index === 25 ? ".inkos/materials/other.md" : ".inkos/materials/fixture.md", charStart: 0, charEnd: excerpt.length, excerpt };
+      return [
+        { role: "assistant", content: [{ type: "toolCall", id: `read-${index}`, name: "workspace__retrieve_material", arguments: { query: `query-${index}` } }] },
+        { role: "toolResult", toolCallId: `read-${index}`, toolName: "workspace__retrieve_material", content: [{ type: "text", text: `query-${index}\n${JSON.stringify(result)}` }], details: { kind: "material_retrieval", query: `query-${index}`, results: [result] }, timestamp: index },
+      ];
+    }).flat() as any;
+    const original = JSON.stringify(messages);
+    const adapted = adaptRestoredAgentMessagesForModel(messages, { api: "openai-responses", provider: "openai", id: "fixture" });
+    const text = adapted.map((message: any) => message.content).join("\n");
+
+    expect(text.split(excerpt)).toHaveLength(3); // Once for each distinct source path.
+    for (let index = 0; index < 26; index++) expect(text).toContain(`query-${index}`);
+    expect(text).toContain('"excerptRef":{"toolCallId":"read-0"}');
+    expect(text).toContain('"charStart":0');
+    expect(text).toContain(`"charEnd":${excerpt.length}`);
+    expect(text).toContain(".inkos/materials/other.md");
+    expect(JSON.stringify(messages)).toBe(original);
+  });
+
   it("does not add synthetic toolResult bridge when target model does not require it", () => {
     const messages = [
       {

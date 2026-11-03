@@ -9,7 +9,7 @@ import { createStudioServer } from "../api/server.js";
 
 it.each([256, 13_278_065])("resumes a session with %i characters of historical tool data through the context budget", async (size) => {
   const root = await mkdtemp(join(tmpdir(), "inkos-restored-context-"));
-  const calls: Array<{ compilation: boolean; system: string; inputChars: number; userText: string }> = [];
+  const calls: Array<{ compilation: boolean; system: string; inputChars: number; userText: string; maxTokens: number }> = [];
   let sessionId: string | undefined;
   const upstream = createServer(async (request, response) => {
     let body = "";
@@ -19,13 +19,17 @@ it.each([256, 13_278_065])("resumes a session with %i characters of historical t
     const compilation = !payload.tools?.length;
     const system = messages.find(message => message.role === "system")?.content ?? "";
     const userText = messages.filter(message => message.role === "user").map(message => message.content).join("\n");
-    calls.push({ compilation, system, inputChars: userText.length, userText: size < 1_000 || !compilation ? userText : "" });
+    calls.push({ compilation, system, inputChars: userText.length, userText: size < 1_000 || !compilation ? userText : "", maxTokens: payload.max_tokens });
     if (messages.some(message => message.content.length > 10_485_760)) {
       response.writeHead(400, { "Content-Type": "application/json" });
       response.end(JSON.stringify({ error: { message: "input content string too long" } }));
       return;
     }
     response.writeHead(200, { "Content-Type": "application/json" });
+    if (compilation && payload.max_tokens < 1024) {
+      response.end(JSON.stringify({ choices: [{ finish_reason: "stop", message: { role: "assistant", content: "" } }] }));
+      return;
+    }
     response.end(JSON.stringify({ choices: [{ finish_reason: compilation ? "stop" : "tool_calls", message: compilation
       ? { role: "assistant", content: "Historical reference fixture.txt was read. A follow-up explanation remains pending." }
       : { role: "assistant", tool_calls: [{ id: "new-completion", type: "function", function: {
@@ -79,6 +83,7 @@ it.each([256, 13_278_065])("resumes a session with %i characters of historical t
     if (size > 1_000) {
       const compilations = calls.filter(call => call.compilation);
       expect(compilations.length).toBeGreaterThan(1);
+      expect(compilations.every(call => call.maxTokens >= 1024)).toBe(true);
       expect(Math.max(...compilations.map(call => call.inputChars))).toBeLessThanOrEqual(128_000 * 4);
       expect(compilations.reduce((total, call) => total + call.inputChars, 0)).toBeGreaterThan(size);
       expect(agentCalls[0]!.userText).toContain("<conversation_summary>");

@@ -609,25 +609,31 @@ export async function compileHarnessContextText(input: {
   readonly maxTokens: number;
   readonly signal?: AbortSignal;
 }): Promise<string> {
-  const outputBudget = Math.min(input.maxTokens, 4096);
+  const modelOutputLimit = Number.isFinite(input.model.maxTokens) && input.model.maxTokens > 0
+    ? input.model.maxTokens : 8192;
+  const outputBudget = Math.min(input.maxTokens, 4096, modelOutputLimit);
+  // The notes budget and the transport allowance are different: reasoning
+  // models can consume output tokens before emitting any visible notes.
+  const transportOutputBudget = Math.min(modelOutputLimit, Math.max(outputBudget, 8192));
+  const systemPrompt = `${input.systemPrompt}\n\nReturn concise notes only, within ${outputBudget} tokens. Preserve evidence pointers and unfinished work.`;
   const contextWindow = Number.isFinite(input.model.contextWindow) && input.model.contextWindow > 0
     ? input.model.contextWindow : 32_000;
   // Compilation also has a bounded request size on models with very large windows.
-  const inputBudget = Math.max(256, Math.min(128_000, contextWindow - outputBudget - estimateTextTokens(input.systemPrompt) - 2048));
+  const inputBudget = Math.max(256, Math.min(128_000, contextWindow - transportOutputBudget - estimateTextTokens(systemPrompt) - 2048));
   const chunks = splitTextByEstimatedTokens(input.userPrompt, inputBudget);
   if (chunks.length > 1) {
     const summaries: string[] = [];
     for (const chunk of chunks) summaries.push(await compileHarnessContextText({
-      ...input, userPrompt: chunk, maxTokens: Math.max(1, Math.floor(outputBudget / chunks.length)),
+      ...input, userPrompt: chunk, maxTokens: Math.max(1024, Math.min(outputBudget, 2048)),
     }));
     return compileHarnessContextText({...input,userPrompt:summaries.join("\n\n"),maxTokens:outputBudget});
   }
   // Compilation consumes quoted history as data. It is a single Pi model call,
   // not an action loop that may execute or retry tools found in that history.
-  const context: PiContext = {systemPrompt:input.systemPrompt,tools:[],messages:[
+  const context: PiContext = {systemPrompt,tools:[],messages:[
     {role:'user',content:input.userPrompt,timestamp:Date.now()},
   ]};
-  const options = {maxTokens:outputBudget,signal:input.signal,toolChoice:'none' as const,
+  const options = {maxTokens:transportOutputBudget,signal:input.signal,toolChoice:'none' as const,
     apiKey:input.apiKey ?? getEnvApiKey(input.model.provider)};
   const stream = input.stream ? guardedPiStream(input.model,context,options)
     : guardedPiNonStreaming(input.model,context,options,input.proxyUrl);

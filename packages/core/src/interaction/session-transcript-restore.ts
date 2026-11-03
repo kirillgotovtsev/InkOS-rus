@@ -1,4 +1,5 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
+import { createHash } from "node:crypto";
 import { readTranscriptEvents } from "./session-transcript.js";
 import {
   BookSessionSchema,
@@ -171,13 +172,32 @@ export function adaptRestoredAgentMessagesForModel(
   target: TargetModelIdentity,
 ): AgentMessage[] {
   const adapted: AgentMessage[] = [];
+  const materialExcerpts = new Map<string, string>();
+
+  const repeatedMaterialResult = (raw: Record<string, unknown>, toolCallId: string): string | undefined => {
+    const details = raw.details;
+    if (!isObject(details) || details.kind !== "material_retrieval" || !Array.isArray(details.results)) return undefined;
+    let repeated = false;
+    const results = details.results.map((result) => {
+      if (!isObject(result) || typeof result.excerpt !== "string" || result.excerpt.length < 8_000) return result;
+      const digest = createHash("sha256").update(JSON.stringify([
+        result.markdownPath, result.charStart, result.charEnd, result.excerpt,
+      ])).digest("hex");
+      const previous = materialExcerpts.get(digest);
+      if (!previous) { materialExcerpts.set(digest, toolCallId); return result; }
+      repeated = true;
+      const { excerpt: _excerpt, ...pointer } = result;
+      return { ...pointer, excerptRef: { toolCallId: previous }, note: "Exact excerpt already appears in the referenced historical tool result; source content is unchanged." };
+    });
+    return repeated ? JSON.stringify({ kind: details.kind, query: details.query, purpose: details.purpose, results }) : undefined;
+  };
 
   const pushToolResultsAsSystem = (toolResults: AgentMessage[]) => {
     const lines = toolResults.flatMap((message) => {
       const raw: Record<string, unknown> = isObject(message) ? message : {};
       const toolName = typeof raw.toolName === "string" ? raw.toolName : "tool";
       const toolCallId = typeof raw.toolCallId === "string" ? raw.toolCallId : "unknown";
-      const text = contentBlocks(raw)
+      const text = repeatedMaterialResult(raw, toolCallId) ?? (contentBlocks(raw)
         .map((block) => {
           if (isObject(block) && block.type === "text" && typeof block.text === "string") {
             return block.text;
@@ -186,7 +206,7 @@ export function adaptRestoredAgentMessagesForModel(
         })
         .filter(Boolean)
         .join("\n")
-        .trim() || "(empty tool result)";
+        .trim() || "(empty tool result)");
       return [`- ${toolName} (${toolCallId}):`, text];
     });
     const timestamp = toolResults.reduce((max, message) => {
