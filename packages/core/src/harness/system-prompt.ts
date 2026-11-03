@@ -99,7 +99,9 @@ ${resumeLine ? `- ${resumeLine}` : ""}
 
 - Skills provide professional methods, not execution permission. Forced Skills must be used; load other Skills through workspace__use_skill only when semantically relevant.
 - Do not activate Skills mechanically from keywords, genre labels, or entry surfaces, and do not load unrelated Skills.`;
-  return appendSkillGuidance(base, options.skills, options.allowIntentSkillSelection === true, isZh);
+  const prompt = appendSkillGuidance(base, options.skills, options.allowIntentSkillSelection === true, isZh);
+  if (options.language !== "ru") return prompt;
+  return `${prompt}\n\n## Язык общения с пользователем\n\nОтвечай пользователю по-русски: объясняй результаты, описывай действия и задавай уточняющие вопросы на русском. Язык навыков, справочников, примеров и предыдущих сообщений не меняет язык общения. Если пользователь явно просит ответ на другом языке, выполни эту просьбу.\n\nЯзык создаваемого или переводимого произведения задаётся отдельно: сохраняй явно выбранный язык текста. Не переводи код, имена инструментов, идентификаторы, пути, URL, дословные цитаты и исходные диагностические сообщения провайдера.`;
 }
 
 function appendSkillGuidance(

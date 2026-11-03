@@ -223,6 +223,9 @@ function attachmentDisposition(fileName: string): string {
 }
 
 const TOOL_LABELS: Record<string, BilingualLabel> = {
+  use_skill: { zh: "启用技能", en: "Use skill" },
+  retrieve_material: { zh: "检索素材", en: "Search materials" },
+  ingest_material: { zh: "归档素材", en: "Ingest material" },
   read: { zh: "读取文件", en: "Read file" },
   edit: { zh: "编辑文件", en: "Edit file" },
   grep: { zh: "搜索", en: "Search" },
@@ -257,6 +260,12 @@ const TOOL_LABELS: Record<string, BilingualLabel> = {
 function resolveToolLabel(tool: string, _agent?: string, lang: StudioLanguage = "zh"): string {
   const label = TOOL_LABELS[tool];
   return label ? pick(lang, label.zh, label.en) : tool;
+}
+
+function localizeStudioToolExecutions<T extends { tool: string; label: string }>(executions: readonly T[] | undefined, language: StudioLanguage): T[] | undefined {
+  return executions?.map(execution => language === "ru" && TOOL_LABELS[execution.tool]
+    ? { ...execution, label: resolveToolLabel(execution.tool, undefined, language) }
+    : execution);
 }
 
 function formatTaskElapsed(ms: number, lang: StudioLanguage): string {
@@ -4438,8 +4447,19 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
     const sessionId = c.req.param("sessionId");
     const session = await loadBookSession(root, sessionId);
     if (!session) return c.json({ error: "Session not found" }, 404);
-    const task = await loadReconciledTaskSnapshot(sessionId);
-    return c.json({ session, chatRequest: await loadChatRequest(sessionId), ...(task ? { task } : {}) });
+    const [task, chatRequest, config] = await Promise.all([
+      loadReconciledTaskSnapshot(sessionId),
+      loadChatRequest(sessionId),
+      loadCurrentProjectConfig({ requireApiKey: false }).catch(() => cachedConfig),
+    ]);
+    const language = normalizeStudioLanguage(config.language);
+    const displayedSession = language === "ru" ? { ...session, messages: session.messages.map(message => ({
+      ...message, toolExecutions: localizeStudioToolExecutions(message.toolExecutions, language),
+    })) } : session;
+    const displayedRequest = chatRequest && language === "ru" ? { ...chatRequest,
+      toolExecutions: localizeStudioToolExecutions(chatRequest.toolExecutions, language),
+    } : chatRequest;
+    return c.json({ session: displayedSession, chatRequest: displayedRequest, ...(task ? { task } : {}) });
   });
 
   app.post("/api/v1/sessions", async (c) => {
@@ -4813,7 +4833,9 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
       const bookLanguage = WritingLanguageSchema.safeParse(activeBookConfig?.language).data;
       const requestedLanguage = actionPayload?.shortRun?.language ?? actionPayload?.createBook?.language;
       const writingLanguage = (agentBookId ? bookLanguage : requestedLanguage) ?? config.language;
-      const surfaceLanguage: StudioLanguage = writingLanguage === "zh" ? "zh" : "en";
+      // A Russian project keeps Russian conversation even for an English Work.
+      // The requested/committed writing language still goes to production tools.
+      const surfaceLanguage = normalizeStudioLanguage(config.language === "ru" ? "ru" : writingLanguage);
       const streamSessionId = loadedBookSession.sessionId;
       const titleBeforeRun = bookSession.title;
       let sessionTitleBroadcasted = false;
@@ -5095,6 +5117,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
             attachments: [],
             sessionId: bookSession.sessionId,
             language: surfaceLanguage,
+            writingLanguage,
             resumeAction: {
               toolCallId: exec.id,
               capabilityId: confirmedOutcome.binding.capabilityId,
@@ -5229,11 +5252,8 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
         }
       }
 
-      // The surface agent should speak the user's language, not just the project default.
-      // Pre-commitment surfaces (chat / play / short / book-create, no book yet) infer it
-      // from the instruction; committed book/edit sessions keep the configured language.
-      // Without this, an English request on a zh-default project gets Chinese replies — and
-      // a Chinese play world, because play_start then infers from the rewritten premise.
+      // Conversation locale and production language are passed separately so an
+      // English Work cannot turn a Russian project's chat or tool labels English.
       // Run pi-agent session
       // 后台生产任务与聊天并行时，把任务状态注入 agent 的系统提示词，
       // 让模型知道任务仍在运行、能回答进度、且不会重复发起同类任务；
@@ -5271,6 +5291,7 @@ export function createStudioServer(initialConfig: ProjectConfig, root: string, o
           attachments,
           sessionId: bookSession.sessionId,
           language: surfaceLanguage,
+          writingLanguage,
           onContextCompression: (event) => {
             broadcast("context:compression", {
               sessionId: streamSessionId,

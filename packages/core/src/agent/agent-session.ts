@@ -105,6 +105,8 @@ export interface AgentSessionConfig {
   disabledSkills?: ReadonlyArray<string>;
   /** Language for the system prompt. */
   language: string;
+  /** Default output language for production tools; a bound Work keeps its language. */
+  writingLanguage?: string;
   /** PipelineRunner for sub-agent tool delegation. */
   pipeline: PipelineRunner;
   /** Project root directory (all creative Works live under works/). */
@@ -217,6 +219,7 @@ interface CachedAgent {
   currentEpisode: HarnessEpisodeHandle | null;
   playWorldExists: boolean;
   language: string;
+  writingLanguage: string;
   modelIdentity: string;
   apiKey: string | undefined;
   allowSystemFileRead: boolean;
@@ -360,7 +363,9 @@ function buildAttachmentUserBlock(attachments: ReadonlyArray<AgentSessionAttachm
   if (!attachments?.length) return "";
   const isEn = language === "en";
   const lines = [
-    isEn
+    language === "ru"
+      ? "\n\n## Загруженные файлы (получены системой, разрешены пользователем для текущего запроса)"
+      : isEn
       ? "\n\n## Uploaded Files (host-provided, user-authorized)"
       : "\n\n## 用户上传文件（宿主已接收，用户授权本轮使用）",
   ];
@@ -371,14 +376,16 @@ function buildAttachmentUserBlock(attachments: ReadonlyArray<AgentSessionAttachm
     lines.push(`- size: ${attachment.size}`);
     if (attachment.storedPath) lines.push(`- stored_path: ${attachment.storedPath}`);
     if (attachment.text) {
-      lines.push(isEn ? "\nContent:" : "\n内容：");
+      lines.push(language === "ru" ? "\nСодержимое:" : isEn ? "\nContent:" : "\n内容：");
       lines.push("```");
       lines.push(attachment.text);
       lines.push("```");
     } else if (attachment.image) {
-      lines.push(isEn ? "- image: attached as multimodal input" : "- 图片：已作为多模态输入附加");
+      lines.push(language === "ru" ? "- Изображение приложено как мультимодальный ввод" : isEn ? "- image: attached as multimodal input" : "- 图片：已作为多模态输入附加");
     } else {
-      lines.push(isEn
+      lines.push(language === "ru"
+        ? "- Файл сохранён системой; при необходимости прочитай stored_path через workspace__read"
+        : isEn
         ? "- content: stored by the host; use workspace__read with stored_path when the task needs it"
         : "- 内容：宿主已保存；任务需要时使用 workspace__read 读取 stored_path");
     }
@@ -847,6 +854,7 @@ async function runAgentSessionUnlocked(
     ? surfaceBinding.workId
     : config.workId;
   const work = await loadSurfaceWork(projectRoot, workId);
+  const writingLanguage = work?.language ?? config.writingLanguage ?? language;
   if (work && config.profileId && work.profileId !== config.profileId) {
     throw new Error(`Work "${work.id}" uses profile "${work.profileId}", not "${config.profileId}"`);
   }
@@ -884,6 +892,7 @@ async function runAgentSessionUnlocked(
     const actionPayloadChanged = cached.actionPayloadKey !== actionPayloadKey;
     const skillResolutionChanged = cached.skillResolutionKey !== skillResolutionKey;
     const languageChanged = cached.language !== language;
+    const writingLanguageChanged = cached.writingLanguage !== writingLanguage;
     const apiKeyChanged = cached.apiKey !== config.apiKey;
     const readPermissionChanged = cached.allowSystemFileRead !== allowSystemFileRead;
     const playWorldChanged = cached.playWorldExists !== playWorldExists;
@@ -903,6 +912,7 @@ async function runAgentSessionUnlocked(
       actionPayloadChanged ||
       skillResolutionChanged ||
       languageChanged ||
+      writingLanguageChanged ||
       apiKeyChanged ||
       readPermissionChanged ||
       playWorldChanged ||
@@ -953,7 +963,7 @@ async function runAgentSessionUnlocked(
       profileId,
       proposalAction,
       work,
-      language,
+      language: writingLanguage,
       actionPayload,
       playMode,
       playWorldExists,
@@ -1170,6 +1180,7 @@ async function runAgentSessionUnlocked(
       currentEpisode: null,
       playWorldExists,
       language,
+      writingLanguage,
       modelIdentity: requestedModelIdentity,
       apiKey: config.apiKey,
       allowSystemFileRead,
@@ -1326,7 +1337,7 @@ async function runAgentSessionUnlocked(
         ? { sourceToolAssistantUuid: lastAssistantUuid }
         : {}),
       ...(role === "user" && config.attachments?.length ? { display: { userInput: {
-        text: userMessage, language: language === "en" ? "en" as const : "zh" as const,
+        text: userMessage, language: language === "ru" ? "ru" as const : language === "en" ? "en" as const : "zh" as const,
         attachments: config.attachments.map(attachment => ({ filename: attachment.filename })),
       } } } : {}),
       message: persistedMessage,

@@ -1,6 +1,9 @@
 /** Native Russian UI and runtime copy. Keys retain the existing English messages.
  * {{n}} marks a runtime value; identifiers, paths and provider responses stay intact. */
 export const RUSSIAN_MESSAGES: Readonly<Record<string, string>> = {
+  "Use skill": "Подключение навыка",
+  "Search materials": "Поиск в материалах",
+  "Ingest material": "Добавление материала",
   "Loading creation wizard…": "Загрузка мастера создания…",
   "Loading flow view…": "Загрузка схемы…",
   "Read file": "Прочитать файл",
