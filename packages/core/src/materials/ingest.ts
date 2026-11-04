@@ -155,17 +155,22 @@ async function extractBufferMaterial(
   const mimeType = meta.mimeType || mimeFromFilename(meta.filename);
   if (isPdf(meta.filename, mimeType)) {
     const pdf = await getDocumentProxy(new Uint8Array(buffer));
-    const extracted = await extractText(pdf, { mergePages: true });
-    const text = normalizeText(extracted.text);
-    if (!text) throw new Error("PDF text extraction returned no text. Scanned PDFs require OCR and are not supported yet.");
-    return {
-      kind: "pdf",
-      source: meta.source,
-      title: stripExtension(meta.filename),
-      mimeType: "application/pdf",
-      text,
-      totalPages: extracted.totalPages,
-    };
+    try {
+      // mergePages flattens every whitespace run, including chapter boundaries.
+      const extracted = await extractText(pdf, { mergePages: false });
+      const text = normalizeText(extracted.text.join("\n\n"));
+      if (!text) throw new Error("PDF text extraction returned no text. Scanned PDFs require OCR and are not supported yet.");
+      return {
+        kind: "pdf",
+        source: meta.source,
+        title: stripExtension(meta.filename),
+        mimeType: "application/pdf",
+        text,
+        totalPages: extracted.totalPages,
+      };
+    } finally {
+      await pdf.destroy();
+    }
   }
   const raw = buffer.toString("utf-8");
   if (isHtml(meta.filename, mimeType)) {

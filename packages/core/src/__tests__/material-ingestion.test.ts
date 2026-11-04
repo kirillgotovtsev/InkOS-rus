@@ -3,6 +3,32 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ingestMaterial } from "../materials/ingest.js";
+import { loadChaptersFromPath } from "../agent/chapter-import-source.js";
+
+/** Minimal real PDF with separate pages and text lines; no manuscript fixture. */
+function chapterPdf(): Buffer {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 4 0 R >>",
+    "",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 7 0 R >> >> /Contents 6 0 R >>",
+    "",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  ];
+  for (const [index, number] of [[3, 1], [5, 2]] as const) {
+    const stream = `BT /F1 12 Tf 50 750 Td (Chapter ${number}: Fixture ${number}) Tj 0 -24 Td (Original source paragraph ${number}.) Tj ET`;
+    objects[index] = `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`;
+  }
+  let document = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((body, index) => { offsets.push(Buffer.byteLength(document)); document += `${index + 1} 0 obj\n${body}\nendobj\n`; });
+  const xref = Buffer.byteLength(document);
+  document += `xref\n0 ${offsets.length}\n0000000000 65535 f \n`;
+  document += offsets.slice(1).map(offset => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  document += `trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(document);
+}
 
 describe("material ingestion", () => {
   let root: string;
@@ -59,5 +85,18 @@ describe("material ingestion", () => {
     const markdown = await readFile(join(root, asset.markdownPath), "utf-8");
     expect(markdown).toContain("入库单需要签字");
     expect(markdown).not.toContain("bad()");
+  });
+
+  it("preserves PDF line and page boundaries so chapter import sees separate chapters", async () => {
+    const original = chapterPdf();
+    await writeFile(join(root, "chapters.pdf"), original);
+    const asset = await ingestMaterial(root, { sourceKind: "file", filePath: "chapters.pdf", purpose: "import" });
+    expect(asset.totalPages).toBe(2);
+    const chapters = await loadChaptersFromPath(join(root, asset.markdownPath));
+    expect(chapters).toEqual([
+      { title: "Fixture 1", content: "Original source paragraph 1." },
+      { title: "Fixture 2", content: "Original source paragraph 2." },
+    ]);
+    expect(await readFile(join(root, "chapters.pdf"))).toEqual(original);
   });
 });

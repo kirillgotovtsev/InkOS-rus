@@ -3025,6 +3025,8 @@ const ReadParams = Type.Object({
     revisionId: Type.Optional(Type.String({ minLength: 1, description: "Omit to read the accepted current revision; supply an exact ID to inspect a candidate or history." })),
     startLine: Type.Optional(Type.Integer({ minimum: 1 })),
     lineCount: Type.Optional(Type.Integer({ minimum: 1, maximum: 400 })),
+    startChar: Type.Optional(Type.Integer({ minimum: 0, description: "External file only: zero-based UTF-16 offset from nextRead. Do not combine with startLine or lineCount." })),
+    charCount: Type.Optional(Type.Integer({ minimum: 2, maximum: 16000, description: "External file only: maximum UTF-16 units to return, including when a single source line is very long. Default 16000." })),
     path: Type.Optional(Type.String({ minLength: 1, description: "For uploaded inputs and project files outside the artifact catalog. Supply either artifactId or path, never both." })),
 });
 
@@ -3073,8 +3075,11 @@ export function createReadTool(
       _toolCallId: string,
       params: Static<typeof ReadParams>,
     ): Promise<AgentToolResult<unknown>> {
-      if (Boolean(params.artifactId) === Boolean(params.path) || (params.path && (params.workId || params.revisionId || params.startLine || params.lineCount))) {
-        throw Object.assign(new Error("Supply either artifactId (with optional Work/revision/page) or an external input path."), { code: "READ_TARGET_INVALID" });
+      if (Boolean(params.artifactId) === Boolean(params.path)
+        || (params.path && (params.workId || params.revisionId))
+        || (params.artifactId && (params.startChar !== undefined || params.charCount !== undefined))
+        || (params.startChar !== undefined && (params.startLine !== undefined || params.lineCount !== undefined))) {
+        throw Object.assign(new Error("Supply either artifactId with optional Work/revision/line page, or path with an optional line page or nextRead character cursor."), { code: "READ_TARGET_INVALID" });
       }
       if (params.artifactId) {
         const workId = params.workId ?? options.workId;
@@ -3114,7 +3119,25 @@ export function createReadTool(
         }
         throw error;
       }
-      return textResult(content);
+      const lines = splitSourceLines(content);
+      const startLine = params.startLine ?? 1;
+      if (startLine > Math.max(1, lines.length)) throw Object.assign(new Error("Requested line is past the file end."), { code: "FILE_LINE_OUT_OF_RANGE" });
+      const startChar = params.startChar ?? lines.slice(0, startLine - 1).reduce((sum, line) => sum + line.length, 0);
+      if (startChar > content.length || (startChar > 0 && /[\uDC00-\uDFFF]/.test(content[startChar] ?? "") && /[\uD800-\uDBFF]/.test(content[startChar - 1]!))) {
+        throw Object.assign(new Error("Requested character cursor is outside a source character."), { code: "FILE_CHAR_OUT_OF_RANGE" });
+      }
+      const charCount = params.charCount ?? 16000;
+      const lineEnd = params.startChar !== undefined ? content.length
+        : startChar + lines.slice(startLine - 1, startLine - 1 + (params.lineCount ?? 200)).reduce((sum, line) => sum + line.length, 0);
+      let endChar = Math.min(lineEnd, startChar + charCount);
+      if (endChar < content.length && /[\uD800-\uDBFF]/.test(content[endChar - 1] ?? "") && /[\uDC00-\uDFFF]/.test(content[endChar]!)) endChar -= 1;
+      if (endChar === startChar && startChar < content.length) throw Object.assign(new Error("Use charCount of at least 2 for this source character."), { code: "FILE_PAGE_TOO_SMALL" });
+      return textResult(content.slice(startChar, endChar), {
+        kind: "file_read", path: params.path, startChar, endChar, totalChars: content.length,
+        charOffsets: "zero-based-utf16-end-exclusive", measurements: measureSourceText(content),
+        contentScope: startChar === 0 && endChar === content.length ? "full_file" : "page_excerpt",
+        nextRead: endChar < content.length ? { path: params.path, startChar: endChar, charCount } : null,
+      });
     },
   };
 }

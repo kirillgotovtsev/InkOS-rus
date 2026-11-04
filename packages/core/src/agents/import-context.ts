@@ -1,13 +1,14 @@
 import { RUSSIAN_OUTPUT_INSTRUCTION } from "../utils/language.js";
 import { chapterDocumentHeading } from "../utils/chapter-document.js";
 import type { WritingLanguage } from "../models/book.js";
-import type { LLMClient } from "../llm/provider.js";
+import type { LLMClient, LLMMessage } from "../llm/provider.js";
 import { runWorkerAgent } from "../agent/worker-agent.js";
 import { prepareWorkerMessages } from "./base.js";
 import type { ActivatedSkillGuidance } from "../agent/skill-tool.js";
 import { loadAvailableAgentSkills, mergeActivatedSkillGuidance } from "../skills/index.js";
 import { estimateTextTokens } from "../llm/provider.js";
 import { semanticInputBudget, splitTextByEstimatedTokens } from "../llm/semantic-input.js";
+import { ProtectedContextOverflowError } from "../harness/context-compiler.js";
 
 export interface ImportedChapterSource {
   readonly title: string;
@@ -36,7 +37,8 @@ export async function compileImportSource(input: {
   readonly signal?: AbortSignal;
 }): Promise<{ readonly markdown: string; readonly compiled: boolean; readonly chunkCount: number }> {
   const complete = renderCompleteImportSource(input.chapters, input.language);
-  const budget = semanticInputBudget(input.client, { reservedOutputTokens: 16_384 });
+  const maxTokens = input.client.defaults.maxTokens;
+  const budget = semanticInputBudget(input.client, { reservedOutputTokens: maxTokens });
   if (budget === undefined || estimateTextTokens(complete) <= budget) {
     return { markdown: complete, compiled: false, chunkCount: 0 };
   }
@@ -48,21 +50,44 @@ export async function compileImportSource(input: {
     return { skill, resources: [] };
   });
   const chunks = splitTextByEstimatedTokens(complete, budget);
-  const compiled: string[] = [];
-  for (let index = 0; index < chunks.length; index += 1) {
+  const prepared: ReadonlyArray<LLMMessage>[] = [];
+  for (let index = 0; index < chunks.length;) {
+    input.signal?.throwIfAborted();
     const chunk = chunks[index]!;
-    const response = await runWorkerAgent(input.client, input.model, await prepareWorkerMessages({ ...input, activatedSkills: mergeActivatedSkillGuidance(input.activeSkills ?? [], skills) }, [
-      {
-        role: "system",
-        content: input.language === "ru"
-          ? `Составьте проверяемую сводку событий по этому фрагменту рукописи в Markdown. ${RUSSIAN_OUTPUT_INSTRUCTION}`
-          : input.language === "en"
-          ? "Apply the activated import and continuation Skills to this complete source chunk. Return traceable Markdown only."
-          : "按已激活的导入与续写 Skill 处理这份完整源片段，只返回可追溯 Markdown。",
-      },
-      { role: "user", content: `Source chunk ${index + 1}/${chunks.length}\n\n${chunk}` },
-    ], undefined, "import-context"), {
+    let messages: ReadonlyArray<LLMMessage>;
+    try {
+      messages = await prepareWorkerMessages({ ...input, activatedSkills: mergeActivatedSkillGuidance(input.activeSkills ?? [], skills) }, [
+        {
+          role: "system",
+          content: input.language === "ru"
+            ? `Составьте проверяемую сводку событий по этому фрагменту рукописи в Markdown. ${RUSSIAN_OUTPUT_INSTRUCTION}`
+            : input.language === "en"
+            ? "Apply the activated import and continuation Skills to this complete source chunk. Return traceable Markdown only."
+            : "按已激活的导入与续写 Skill 处理这份完整源片段，只返回可追溯 Markdown。",
+        },
+        { role: "user", content: `Source chunk ${index + 1}\n\n${chunk}` },
+      ], maxTokens, "import-context");
+    } catch (error) {
+      if (!(error instanceof ProtectedContextOverflowError)) throw error;
+      // The real prompt includes the author request, Work and hydrated skills.
+      // Repartition the exact source before any model call; none of those
+      // protected instructions or source characters may be dropped to fit.
+      const smallerBudget = estimateTextTokens(chunk) - (error.protectedTokens - error.budgetTokens) - 128;
+      if (smallerBudget <= 0) throw error;
+      const parts = splitTextByEstimatedTokens(chunk, smallerBudget);
+      if (parts.length < 2) throw error;
+      chunks.splice(index, 1, ...parts);
+      continue;
+    }
+    prepared.push(messages);
+    index += 1;
+  }
+  const compiled: string[] = [];
+  for (let index = 0; index < prepared.length; index += 1) {
+    input.signal?.throwIfAborted();
+    const response = await runWorkerAgent(input.client, input.model, prepared[index]!, {
       temperature: 0.2,
+      maxTokens,
       signal: input.signal,
     });
     const body = response.content.trim();
