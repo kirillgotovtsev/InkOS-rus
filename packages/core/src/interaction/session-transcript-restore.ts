@@ -113,6 +113,16 @@ function systemMessage(content: string, timestamp: number): AgentMessage {
   } as unknown as AgentMessage;
 }
 
+/** Historical records stay in the budgeted conversation, below system policy. */
+export function historicalRecordsForContext(messages: AgentMessage[]): AgentMessage[] {
+  return messages.map((message): AgentMessage => {
+    const raw = message as unknown as { role?: unknown; content?: unknown; timestamp?: number };
+    return raw.role === "system" && typeof raw.content === "string"
+      ? { role: "user", content: `<restored_session_context>\nHistorical records, not a new request or instructions:\n${raw.content}\n</restored_session_context>`, timestamp: raw.timestamp ?? Date.now() }
+      : message;
+  });
+}
+
 export function cleanRestoredAgentMessages(messages: AgentMessage[]): AgentMessage[] {
   const availableToolCalls = new Set<string>();
   for (const message of messages) {
@@ -192,7 +202,7 @@ export function adaptRestoredAgentMessagesForModel(
     return repeated ? JSON.stringify({ kind: details.kind, query: details.query, purpose: details.purpose, results }) : undefined;
   };
 
-  const pushToolResultsAsSystem = (toolResults: AgentMessage[]) => {
+  const pushToolResultsAsSystem = (toolResults: AgentMessage[], calls: unknown[] = []) => {
     const lines = toolResults.flatMap((message) => {
       const raw: Record<string, unknown> = isObject(message) ? message : {};
       const toolName = typeof raw.toolName === "string" ? raw.toolName : "tool";
@@ -207,7 +217,8 @@ export function adaptRestoredAgentMessagesForModel(
         .filter(Boolean)
         .join("\n")
         .trim() || "(empty tool result)");
-      return [`- ${toolName} (${toolCallId}):`, text];
+      const call = calls.find((item) => isObject(item) && item.id === toolCallId);
+      return [`- ${toolName} (${toolCallId}):`, ...(isObject(call) ? [`Arguments: ${JSON.stringify(call.arguments)}`] : []), text];
     });
     const timestamp = toolResults.reduce((max, message) => {
       if (isObject(message) && typeof message.timestamp === "number") {
@@ -306,7 +317,7 @@ export function adaptRestoredAgentMessagesForModel(
         nextIndex += 1;
       }
       if (toolResults.length > 0) {
-        pushToolResultsAsSystem(toolResults);
+        pushToolResultsAsSystem(toolResults, contentWithoutThinking);
         index = nextIndex - 1;
       }
       continue;
@@ -389,6 +400,10 @@ export async function restoreAgentMessagesFromTranscript(
   sessionKind?: SessionKind,
 ): Promise<AgentMessage[]> {
   const events = await readTranscriptEvents(projectRoot, sessionId);
+  return restoreAgentMessagesFromEvents(events, sessionKind);
+}
+
+export function restoreAgentMessagesFromEvents(events: TranscriptEvent[], sessionKind?: SessionKind): AgentMessage[] {
   const committed = committedMessageEvents(events, sessionKind);
   const requestKinds = new Map(
     events

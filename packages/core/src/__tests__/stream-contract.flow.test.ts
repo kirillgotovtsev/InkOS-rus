@@ -1,5 +1,8 @@
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Type } from "@sinclair/typebox";
 import { expect, it } from "vitest";
 import { createLLMClient } from "../llm/provider.js";
@@ -256,6 +259,41 @@ it('reserves a usable Responses output allowance for every compilation chunk and
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
+}, 30_000);
+
+it('keeps completed compilation chunks across a failed attempt without caching empty output', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'inkos-chunk-cache-'));
+  const requests: string[] = [];
+  let fail = true;
+  const server = createServer(async (request, response) => {
+    let body = ''; for await (const chunk of request) body += chunk;
+    const payload = JSON.parse(body);
+    const text = payload.messages.find((message: {role:string}) => message.role === 'user').content;
+    requests.push(text);
+    const empty = fail && requests.length > 1;
+    response.writeHead(200, {'Content-Type':'application/json'});
+    response.end(JSON.stringify({choices:[{finish_reason:'stop',message:{role:'assistant',content:empty?'':'Notes preserve fixture.txt. Work is pending.'}}]}));
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  try {
+    const client = createLLMClient({ service: 'custom', configSource: 'studio', provider: 'openai', model: 'fixture', apiKey: 'fixture', baseUrl: `http://127.0.0.1:${(server.address() as {port:number}).port}/v1`, apiFormat: 'chat', stream: false, temperature: 0, thinkingBudget: 0 });
+    const input = {model:{...client._piModel!,contextWindow:32_000},apiKey:'fixture',stream:false,systemPrompt:'Summarize historical records only.',userPrompt:'Synthetic source paragraph. '.repeat(10_000),maxTokens:1024,compilationCache:{projectRoot:root,sessionId:'s'}};
+    await expect(compileHarnessContextText(input)).rejects.toThrow('without text or a tool call');
+    expect(requests.length).toBe(3);
+    const firstChunk = requests[0];
+    fail = false;
+    expect(await compileHarnessContextText(input)).toContain('fixture.txt');
+    expect(requests.filter(text => text === firstChunk)).toHaveLength(1);
+    const completedCalls = requests.length;
+    expect(await compileHarnessContextText(input)).toContain('fixture.txt');
+    expect(requests).toHaveLength(completedCalls);
+    await expect(compileHarnessContextText({...input,signal:AbortSignal.abort()})).rejects.toThrow();
+    expect(requests).toHaveLength(completedCalls);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));
+    await rm(root,{recursive:true,force:true});
   }
 }, 30_000);
 

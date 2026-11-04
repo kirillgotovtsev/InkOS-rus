@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -13,6 +13,7 @@ import {
   saveWorkManifest,
   type ContextFragment,
 } from "../harness/index.js";
+import { adaptRestoredAgentMessagesForModel, historicalRecordsForContext } from "../interaction/session-transcript-restore.js";
 
 describe("context assembly mini-flow", () => {
   it('retains exact progress and recent failures without recompacting the same completed history',async()=>{
@@ -163,8 +164,10 @@ describe("context assembly mini-flow", () => {
       {role:"toolResult",toolCallId:"read-1",toolName:"workspace__read",content:[{type:"text",text:"A complete source paragraph. ".repeat(200)}],isError:false},
     ] as never);
     const records = history.split("\n").map((line)=>JSON.parse(line));
-    expect(records.map((record)=>record.role)).toEqual(["assistant","toolResult"]);
-    expect(records[1].toolCallId).toBe("read-1");
+    expect(records.map((record)=>record.role)).toEqual(["user"]);
+    expect(records[0].content).toContain("read-1");
+    expect(records[0].content).toContain('"path":"works/novel/source/outline.md"');
+    expect(records[0].content).toContain("A complete source paragraph. ".repeat(200).trim());
     expect(result.at(-1)).toEqual(user);
     expect(result.some((message)=>message.role==="toolResult")).toBe(false);
     history = "";
@@ -174,5 +177,61 @@ describe("context assembly mini-flow", () => {
     ] as never);
     expect(history).toBe("");
     expect(uncompressed.at(-1)).toEqual(smallResult);
+  });
+
+  it("reuses validated notes after Agent recreation and adds new short turns without model compaction", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inkos-notes-cache-")); roots.push(root);
+    let calls = 0;
+    const phases: string[] = [];
+    const create = (sessionId = "session-a", projectRoot = root) => createHarnessContextTransform({
+      projectRoot, sessionId, work: null, profile: createBuiltInWorkProfileRegistry().require("workspace-default"), budgetTokens: 2_000,
+      conversationCompactor: async () => { calls++; return "Read works/fixture.txt. A reply remains pending."; },
+      onContextCompression: event => phases.push(event.phase),
+    });
+    const history = [
+      { role: "user", content: "Read the supplied source.", timestamp: 1 },
+      { role: "assistant", content: [{ type: "toolCall", id: "read-a", name: "workspace__read", arguments: { path: "works/fixture.txt" } }], timestamp: 2 },
+      { role: "toolResult", toolCallId: "read-a", toolName: "workspace__read", content: [{ type: "text", text: "Synthetic source paragraph. ".repeat(2_000) }], timestamp: 3 },
+    ] as never[];
+    await create()([...history, { role: "user", content: "status", timestamp: 4 }] as never[]);
+    expect(calls).toBe(1);
+    const restored = historicalRecordsForContext(adaptRestoredAgentMessagesForModel(history, { api: "openai-responses", provider: "openai", id: "different-model" }));
+    const latest = { role: "user", content: "And now?", timestamp: 6 };
+    const result = await create()([...restored, { role: "user", content: "status", timestamp: 4 }, { role: "assistant", content: [{ type: "text", text: "Still pending." }], timestamp: 5 }, latest] as never[]);
+    expect(calls).toBe(1);
+    expect(phases).toEqual(["start", "end"]);
+    expect(result.at(-1)).toEqual(latest);
+    expect(JSON.stringify(result)).toContain("Still pending.");
+    const path = join(root, ".inkos", "context-cache", (await readdir(join(root, ".inkos", "context-cache")))[0]!);
+    const cached = JSON.parse(await readFile(path, "utf8"));
+    expect(cached.frames.every((frame: string) => /^[a-f0-9]{64}$/.test(frame))).toBe(true);
+    expect(JSON.stringify(cached)).not.toContain("Synthetic source paragraph");
+
+    await create("different-session")([...history, latest] as never[]);
+    expect(calls).toBe(2);
+    const otherRoot = await mkdtemp(join(tmpdir(), "inkos-notes-isolation-")); roots.push(otherRoot);
+    await create("session-a", otherRoot)([...history, latest] as never[]);
+    expect(calls).toBe(3);
+  });
+
+  it("invalidates edited history and recovers from corrupt checkpoints without treating a failed compaction as cached", async () => {
+    const root = await mkdtemp(join(tmpdir(), "inkos-notes-validation-")); roots.push(root);
+    const history = { role: "user", content: "Original fact. ".repeat(500), timestamp: 1 };
+    const latest = { role: "user", content: "status", timestamp: 2 };
+    let calls = 0;
+    const create = (summary = "Original facts retained.") => createHarnessContextTransform({ projectRoot: root, sessionId: "s", work: null,
+      profile: createBuiltInWorkProfileRegistry().require("workspace-default"), budgetTokens: 200,
+      conversationCompactor: async () => { calls++; return summary; },
+    });
+    await create()([history, latest] as never[]);
+    const modified = { ...history, content: "Corrected fact. ".repeat(500) };
+    await create("Corrected facts retained.")([modified, latest] as never[]);
+    expect(calls).toBe(2);
+    const path = join(root, ".inkos", "context-cache", (await readdir(join(root, ".inkos", "context-cache")))[0]!);
+    await writeFile(path, "not-json");
+    await expect(create("oversized output ".repeat(500))([modified, latest] as never[])).rejects.toThrow("still exceeds budget");
+    expect(await readFile(path, "utf8")).toBe("not-json");
+    await create("Corrected facts retained.")([modified, latest] as never[]);
+    expect(calls).toBe(4);
   });
 });

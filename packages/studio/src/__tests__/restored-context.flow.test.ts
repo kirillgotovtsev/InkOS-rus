@@ -52,6 +52,10 @@ it.each([256, 13_278_065])("resumes a session with %i characters of historical t
     sessionId = session.sessionId;
     const path = join(root, ".inkos/sessions", `${sessionId}.jsonl`);
     const original = await readFile(path, "utf8");
+    // Distinct passages ensure this size regression also covers every input
+    // chunk when identical compilation inputs can now be reused.
+    const sourceText = size < 1_000 ? "x".repeat(size)
+      : Array.from({ length: Math.ceil(size / 4096) }, (_, index) => `[passage-${index}] ${"x".repeat(4096)}`).join("").slice(0, size);
     let seq = Math.max(...original.trim().split("\n").map(line => JSON.parse(line).seq));
     const event = (value: object) => ({ version: 1, sessionId, requestId: "historical-request", seq: ++seq, timestamp: seq, ...value });
     const history = [
@@ -63,7 +67,7 @@ it.each([256, 13_278_065])("resumes a session with %i characters of historical t
       } }),
       event({ type: "message", uuid: "old-result", parentUuid: "old-assistant", role: "toolResult", message: {
         role: "toolResult", toolCallId: "historical-read", toolName: "workspace__retrieve_material", isError: false,
-        content: [{ type: "text", text: `fixture.txt\n${"x".repeat(size)}` }], timestamp: 3,
+        content: [{ type: "text", text: `fixture.txt\n${sourceText}` }], timestamp: 3,
       } }),
       event({ type: "request_committed" }),
     ];
@@ -91,6 +95,13 @@ it.each([256, 13_278_065])("resumes a session with %i characters of historical t
       expect(calls.some(call => call.compilation)).toBe(false);
       expect(agentCalls[0]!.userText).toContain("x".repeat(size));
     }
+    const compilationCalls = calls.filter(call => call.compilation).length;
+    evictAgentCache(sessionId!);
+    const nextReply = await app.request("/api/v1/agent", post({ sessionId, instruction: "Короткий следующий вопрос.", model: "fixture-model", service: "custom:fixture" }));
+    expect(nextReply.status).toBe(200);
+    expect(await nextReply.json()).toMatchObject({ completionStatus: "answered" });
+    expect(calls.filter(call => call.compilation)).toHaveLength(compilationCalls);
+    expect(calls.filter(call => !call.compilation)).toHaveLength(2);
     expect((await readFile(path, "utf8")).startsWith(seeded)).toBe(true);
   } finally {
     if (sessionId) evictAgentCache(sessionId);

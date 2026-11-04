@@ -29,6 +29,23 @@ describe("session transcript codec", () => {
     await rm(projectRoot, { recursive: true, force: true });
   });
 
+  it("reads large Unicode records, CRLF, blank lines and a final record without a newline", async () => {
+    const path = transcriptPath(projectRoot, "streamed");
+    await mkdir(join(projectRoot, ".inkos", "sessions"), { recursive: true });
+    const event = { type: "request_started", version: 1, sessionId: "streamed", requestId: "r", seq: 1, timestamp: 1, input: "Русский текст 🐈\n".repeat(10_000) };
+    const committed = { type: "request_committed", version: 1, sessionId: "streamed", requestId: "r", seq: 2, timestamp: 2 };
+    await writeFile(path, `${JSON.stringify(event)}\r\n\r\n${JSON.stringify(committed)}`);
+    expect(await readTranscriptEvents(projectRoot, "streamed")).toEqual([event, committed]);
+    await writeFile(path, `${JSON.stringify(event)}\r\n\r\nnot-json`);
+    await expect(readTranscriptEvents(projectRoot, "streamed")).rejects.toThrow(`${path}:3:`);
+  });
+
+  it("returns no history for a missing transcript and propagates file read errors", async () => {
+    expect(await readTranscriptEvents(projectRoot, "missing")).toEqual([]);
+    await mkdir(transcriptPath(projectRoot, "directory"), { recursive: true });
+    await expect(readTranscriptEvents(projectRoot, "directory")).rejects.toMatchObject({ code: "EISDIR" });
+  });
+
   it('recovers the originating request for a confirmed action across later chat turns',async()=>{
     const base={version:1 as const,sessionId:'s1',timestamp:100};
     await appendTranscriptEvent(projectRoot,{...base,type:'request_started',requestId:'r1',seq:1,input:'Import then write, review and export'});

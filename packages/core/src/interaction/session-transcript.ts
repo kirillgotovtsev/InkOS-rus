@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, open } from "node:fs/promises";
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { TranscriptEventSchema, type TranscriptEvent } from "./session-transcript-schema.js";
 import type { SessionKind, TranscriptRole } from "./session-transcript-schema.js";
@@ -34,22 +35,38 @@ export async function readTranscriptEvents(
   projectRoot: string,
   sessionId: string,
 ): Promise<TranscriptEvent[]> {
-  let raw: string;
+  let file;
   try {
-    raw = await readFile(transcriptPath(projectRoot, sessionId), "utf-8");
+    file = await open(transcriptPath(projectRoot, sessionId), "r");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }
 
   const events: TranscriptEvent[] = [];
-  for (const [index, line] of raw.split(/\r?\n/).entries()) {
-    if (!line.trim()) continue;
-    try {
-      events.push(TranscriptEventSchema.parse(JSON.parse(line)));
-    } catch (error) {
-      throw new Error(`Invalid transcript event at ${transcriptPath(projectRoot, sessionId)}:${index + 1}: ${String(error)}`);
+  // Large tool results can make a session tens of megabytes. Read one record
+  // at a time instead of retaining both the full file and a split line array.
+  const stream = file.createReadStream({ encoding: "utf8", autoClose: false });
+  const lines = createInterface({ input: stream, crlfDelay: Infinity });
+  let inputError: Error | undefined;
+  const onError = (error: Error) => { inputError = error; lines.close(); };
+  stream.on("error", onError);
+  let lineNumber = 0;
+  try {
+    for await (const line of lines) {
+      lineNumber += 1;
+      if (!line.trim()) continue;
+      try {
+        events.push(TranscriptEventSchema.parse(JSON.parse(line)));
+      } catch (error) {
+        throw new Error(`Invalid transcript event at ${transcriptPath(projectRoot, sessionId)}:${lineNumber}: ${String(error)}`);
+      }
     }
+    if (inputError) throw inputError;
+  } finally {
+    lines.close();
+    stream.destroy();
+    await file.close();
   }
 
   return events.sort((a, b) => a.seq - b.seq);
