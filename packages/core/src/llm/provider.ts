@@ -499,6 +499,27 @@ function stripReservedKeys(extra: Record<string, unknown>): Record<string, unkno
   return result;
 }
 
+/** GPT-6 sampling parameters require an explicit reasoning effort of none.
+ * https://developers.openai.com/api/docs/guides/latest-model#update-api-and-model-parameters */
+export function sanitizeOpenAIModelParameters<T>(payload: T, model: Pick<PiModel<PiApi>, "id" | "api">): T {
+  if (model.api !== "openai-responses" && model.api !== "openai-completions") return payload;
+  const id = model.id.replace(/^openai\//, "");
+  const families = ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-luna"];
+  if (!families.some(name => id === name || (id.startsWith(`${name}-`) && /^\d{4}-\d{2}-\d{2}$/.test(id.slice(name.length + 1))))) return payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return payload;
+  const body = payload as Record<string, unknown>;
+  const reasoning = body.reasoning && typeof body.reasoning === "object" ? body.reasoning as { effort?: unknown } : undefined;
+  if ((reasoning?.effort ?? body.reasoning_effort) === "none") return payload;
+  const cleaned = { ...body };
+  for (const key of ["temperature", "top_p", "top_logprobs", "logprobs"]) delete cleaned[key];
+  if (Array.isArray(cleaned.include)) {
+    const include = cleaned.include.filter(item => item !== "message.output_text.logprobs");
+    if (include.length) cleaned.include = include;
+    else delete cleaned.include;
+  }
+  return cleaned as T;
+}
+
 // === Fixed-Temperature Model Clamp ===
 //
 // 部分 thinking 模型（如 Moonshot kimi-k2.5/k2.6、kimi-k2-thinking）的 API
@@ -1227,7 +1248,7 @@ async function chatCompletionViaCustomOpenAICompatible(
     const response = await fetchWithProxy(`${baseUrl.replace(/\/$/, "")}/responses`, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(sanitizeOpenAIModelParameters(payload, { id: model, api: "openai-responses" })),
       signal,
     }, client.proxyUrl);
     if (!response.ok) {
@@ -1328,7 +1349,7 @@ async function chatCompletionViaCustomOpenAICompatible(
   const response = await fetchWithProxy(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify(sanitizeOpenAIModelParameters(payload, { id: model, api: "openai-completions" })),
     signal,
   }, client.proxyUrl);
   if (!response.ok) {
@@ -1631,6 +1652,7 @@ async function chatCompletionViaPiAi(
     apiKey: client._apiKey,
     headers: mergeUserAgent({ ...(piModel.headers ?? {}), ...traceHeaders }),
     signal,
+    onPayload: (payload: unknown, activeModel: PiModel<PiApi>) => sanitizeOpenAIModelParameters(payload, activeModel),
   };
 
   if (!client.stream) {

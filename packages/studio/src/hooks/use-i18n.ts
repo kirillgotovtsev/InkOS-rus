@@ -253,11 +253,12 @@ export const strings = {
   "doctor.inkosJson": { zh: "inkos.json 配置", en: "inkos.json configuration" },
   "doctor.projectEnv": { zh: "项目 .env 文件", en: "Project .env file" },
   "doctor.globalEnv": { zh: "全局 ~/.inkos/.env", en: "Global ~/.inkos/.env" },
+  "doctor.optional": { zh: "可选", en: "Optional" },
   "doctor.booksDir": { zh: "书籍目录", en: "Books directory" },
   "doctor.llmApi": { zh: "LLM API 连接", en: "LLM API connectivity" },
   "doctor.connected": { zh: "已连接", en: "Connected" },
   "doctor.failed": { zh: "失败", en: "Failed" },
-  "doctor.allPassed": { zh: "所有检查通过 — 环境健康", en: "All checks passed — environment is healthy" },
+  "doctor.allPassed": { zh: "必要检查已通过", en: "Required checks passed" },
   "doctor.someFailed": { zh: "部分检查失败 — 请查看配置", en: "Some checks failed — review configuration" },
 
   // Genre extras

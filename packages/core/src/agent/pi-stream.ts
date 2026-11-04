@@ -16,6 +16,7 @@ import {
   estimatePiContextTokens,
   guardAssistantMessageStream,
   withTransientLLMRetry,
+  sanitizeOpenAIModelParameters,
   type StreamDeadlineOptions,
 } from "../llm/provider.js";
 import {
@@ -75,7 +76,7 @@ export function guardedPiStream<TApi extends Api>(
             configured = { ...configured as Record<string, unknown>, tool_choice: { type: choice === "none" ? "none" : "auto" } };
           }
         }
-        const prepared = await options?.onPayload?.(configured, activeModel) ?? configured;
+        const prepared = sanitizeOpenAIModelParameters(await options?.onPayload?.(configured, activeModel) ?? configured, activeModel);
         recordExecutionEvidence("model-request-prepared", { modelCallId: modelCall?.modelCallId, model: activeModel.id,
           api: activeModel.api,
           parameters: prepared && typeof prepared === "object" ? Object.fromEntries(Object.entries(prepared).filter(([key]) => ["stream", "thinking", "max_tokens", "max_completion_tokens", "max_output_tokens", "tool_choice"].includes(key))) : {} });
@@ -155,7 +156,7 @@ export function guardedPiNonStreaming<TApi extends Api>(
               ...(options?.headers ?? {}),
               ...traceHeaders,
             },
-            body: JSON.stringify(transformed ?? configured),
+            body: JSON.stringify(sanitizeOpenAIModelParameters(transformed ?? configured, model)),
             signal: deadline.signal,
           }, proxyUrl);
           const raw = await response.text();
